@@ -2,31 +2,22 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Shield } from "lucide-react";
+import { Logo } from "../../components/logo";
 
 const apiBase =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/v1";
-
-function AdminShield() {
-  return (
-    <div className="adminBadgeMark" aria-hidden="true">
-      <svg viewBox="0 0 48 48">
-        <path d="M24 4 38 9v12c0 9.5-5.5 17.5-14 21-8.5-3.5-14-11.5-14-21V9Z" />
-        <path d="M17 24h14M24 17v14" />
-      </svg>
-    </div>
-  );
-}
 
 export default function AdminLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("admin@example.com");
   const [password, setPassword] = useState("");
-  const [status, setStatus] = useState("使用管理员域名直接进入后台登录。");
+  const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function handleLogin() {
     setBusy(true);
-    setStatus("正在验证管理员身份...");
+    setStatus("正在验证...");
 
     try {
       const response = await fetch(`${apiBase}/admin/login`, {
@@ -36,7 +27,7 @@ export default function AdminLoginPage() {
       });
 
       if (!response.ok) {
-        setStatus("管理员登录失败，请检查邮箱和密码。");
+        setStatus("登录失败，请检查邮箱和密码。");
         return;
       }
 
@@ -48,53 +39,58 @@ export default function AdminLoginPage() {
     }
   }
 
-  return (
-    <main className="adminLoginPage">
-      <div className="adminBackdrop" />
+  const inputClass =
+    "w-full h-10 px-3 text-sm rounded-lg border border-[#262626] bg-[#0a0a0a] text-white placeholder:text-[#525252] focus:outline-none focus:ring-2 focus:ring-white/10 focus:border-[#404040] transition-colors";
 
-      <section className="adminLoginShell">
-        <div className="adminLoginAside">
-          <AdminShield />
-          <span className="eyebrow">HyPanel Admin Console</span>
-          <h1>管理员控制台</h1>
+  return (
+    <main className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-4">
+      <div className="w-full max-w-[400px]">
+        {/* Brand */}
+        <div className="flex flex-col items-center mb-8">
+          <Logo size={44} dark />
+          <h1 className="mt-3 text-xl font-semibold tracking-tight text-white">
+            HyPanel
+          </h1>
+          <span className="mt-2 inline-flex items-center gap-1.5 h-6 px-2.5 rounded-md text-[11px] font-semibold uppercase tracking-wider bg-white/8 text-white/50 border border-white/8">
+            <Shield size={12} />
+            Admin
+          </span>
         </div>
 
-        <section className="adminLoginCard">
-          <div className="statusBar dark">
-            <span className="statusDot" />
-            <span>{status}</span>
+        {/* Card */}
+        <div className="bg-[#141414] border border-[#262626] rounded-2xl p-6">
+          {/* Status */}
+          {status && (
+            <div className="flex items-center gap-2 mb-5 text-sm text-[#a3a3a3]">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#22c55e] shrink-0" />
+              <span>{status}</span>
+            </div>
+          )}
+
+          <div className="space-y-3">
+            <input
+              className={inputClass}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="管理员邮箱"
+            />
+            <input
+              className={inputClass}
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="密码"
+            />
+            <button
+              className="w-full h-10 bg-white text-[#0a0a0a] text-sm font-medium rounded-lg hover:bg-[#e5e5e5] disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              onClick={handleLogin}
+              disabled={busy}
+            >
+              {busy ? "登录中..." : "进入后台"}
+            </button>
           </div>
-
-          <label className="field">
-            <span className="fieldLabel">管理员邮箱</span>
-            <div className="fieldInputWrap dark">
-              <input
-                className="fieldInput dark"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="输入管理员邮箱"
-              />
-            </div>
-          </label>
-
-          <label className="field">
-            <span className="fieldLabel">登录密码</span>
-            <div className="fieldInputWrap dark">
-              <input
-                className="fieldInput dark"
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="输入管理员密码"
-              />
-            </div>
-          </label>
-
-          <button className="heroButton dark" onClick={handleLogin} disabled={busy}>
-            {busy ? "登录中..." : "进入后台"}
-          </button>
-        </section>
-      </section>
+        </div>
+      </div>
     </main>
   );
 }

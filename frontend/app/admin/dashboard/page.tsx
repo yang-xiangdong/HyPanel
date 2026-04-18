@@ -2,6 +2,18 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import {
+  LayoutDashboard,
+  Users,
+  Settings,
+  BarChart3,
+  LogOut,
+  RefreshCw,
+  Search,
+  X,
+  Copy,
+} from "lucide-react";
+import { Logo } from "../../components/logo";
 
 type DashboardResponse = {
   users: Array<{
@@ -29,10 +41,10 @@ function formatGB(bytes: number) {
 }
 
 const sections = [
-  { id: "overview", label: "总览" },
-  { id: "users", label: "用户" },
-  { id: "actions", label: "操作" },
-  { id: "traffic", label: "统计" },
+  { id: "overview", label: "总览", icon: LayoutDashboard },
+  { id: "users", label: "用户", icon: Users },
+  { id: "actions", label: "操作", icon: Settings },
+  { id: "traffic", label: "统计", icon: BarChart3 },
 ] as const;
 
 export default function AdminDashboardPage() {
@@ -40,7 +52,7 @@ export default function AdminDashboardPage() {
   const [token, setToken] = useState("");
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [code, setCode] = useState("");
-  const [status, setStatus] = useState("正在同步后台数据");
+  const [status, setStatus] = useState("正在同步...");
   const [keyword, setKeyword] = useState("");
   const [editingQuota, setEditingQuota] = useState<Record<string, string>>({});
   const [resetResult, setResetResult] = useState<{
@@ -65,22 +77,6 @@ export default function AdminDashboardPage() {
     void loadDashboard(token);
   }, [token]);
 
-  useEffect(() => {
-    function onScroll() {
-      const sectionIds = sections.map((item) => item.id);
-      const visible = sectionIds.findLast((id) => {
-        const el = document.getElementById(id);
-        if (!el) return false;
-        return el.getBoundingClientRect().top < 160;
-      });
-      if (visible) setActiveSection(visible);
-    }
-
-    window.addEventListener("scroll", onScroll);
-    onScroll();
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
   async function loadDashboard(currentToken: string) {
     const response = await fetch(`${apiBase}/admin/dashboard`, {
       headers: { Authorization: `Bearer ${currentToken}` },
@@ -88,13 +84,13 @@ export default function AdminDashboardPage() {
     });
 
     if (!response.ok) {
-      setStatus("后台加载失败，请重新登录");
+      setStatus("加载失败，请重新登录");
       return;
     }
 
     const data = (await response.json()) as DashboardResponse;
     setDashboard(data);
-    setStatus("后台已就绪");
+    setStatus("已就绪");
   }
 
   async function handleGenerateCode() {
@@ -108,16 +104,19 @@ export default function AdminDashboardPage() {
     });
 
     if (!response.ok) {
-      setStatus("生成验证码失败");
+      setStatus("生成失败");
       return;
     }
 
     const data = (await response.json()) as { code: string };
     setCode(data.code);
-    setStatus("新的注册码已生成，有效期 1 小时");
+    setStatus("验证码已生成，有效期 1 小时");
   }
 
-  async function handleToggleStatus(username: string, nextStatus: "active" | "disabled") {
+  async function handleToggleStatus(
+    username: string,
+    nextStatus: "active" | "disabled",
+  ) {
     const response = await fetch(`${apiBase}/admin/users/${username}`, {
       method: "PATCH",
       headers: {
@@ -128,18 +127,18 @@ export default function AdminDashboardPage() {
     });
 
     if (!response.ok) {
-      setStatus("更新用户状态失败");
+      setStatus("更新失败");
       return;
     }
 
-    setStatus(`用户 ${username} 已更新为 ${nextStatus}`);
+    setStatus(`${username} 已${nextStatus === "active" ? "启用" : "禁用"}`);
     await loadDashboard(token);
   }
 
   async function handleUpdateQuota(username: string) {
     const quota = Number(editingQuota[username] ?? "");
     if (Number.isNaN(quota) || quota < 0) {
-      setStatus("请输入有效的流量额度");
+      setStatus("请输入有效数值");
       return;
     }
 
@@ -153,22 +152,25 @@ export default function AdminDashboardPage() {
     });
 
     if (!response.ok) {
-      setStatus("更新流量额度失败");
+      setStatus("更新失败");
       return;
     }
 
-    setStatus(`用户 ${username} 的流量额度已更新`);
+    setStatus(`${username} 额度已更新`);
     await loadDashboard(token);
   }
 
   async function handleResetPassword(username: string) {
-    const response = await fetch(`${apiBase}/admin/users/${username}/reset-password`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const response = await fetch(
+      `${apiBase}/admin/users/${username}/reset-password`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      },
+    );
 
     if (!response.ok) {
-      setStatus("重置密码失败");
+      setStatus("重置失败");
       return;
     }
 
@@ -178,7 +180,7 @@ export default function AdminDashboardPage() {
       subscriptionUrl: string;
     };
     setResetResult(data);
-    setStatus(`用户 ${username} 的密码已重置`);
+    setStatus(`${username} 密码已重置`);
   }
 
   function handleLogout() {
@@ -187,9 +189,13 @@ export default function AdminDashboardPage() {
   }
 
   const totalUsers = dashboard?.users.length ?? 0;
-  const totalUsed = dashboard?.traffic.reduce((sum, item) => sum + item.totalBytes, 0) ?? 0;
+  const totalUsed =
+    dashboard?.traffic.reduce((sum, item) => sum + item.totalBytes, 0) ?? 0;
   const onlineUsers =
-    dashboard?.users.reduce((sum, item) => sum + (item.onlineCount > 0 ? 1 : 0), 0) ?? 0;
+    dashboard?.users.reduce(
+      (sum, item) => sum + (item.onlineCount > 0 ? 1 : 0),
+      0,
+    ) ?? 0;
 
   const filteredUsers = useMemo(
     () =>
@@ -199,309 +205,438 @@ export default function AdminDashboardPage() {
     [dashboard?.users, keyword],
   );
 
-  function jumpTo(id: (typeof sections)[number]["id"]) {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
+  const thClass =
+    "text-left px-4 py-3 text-xs font-medium text-[#737373] uppercase tracking-wider";
+  const tdClass = "px-4 py-3 text-sm";
+  const ghostBtnClass =
+    "h-8 px-2.5 text-xs font-medium border border-[#e5e5e5] rounded-md hover:bg-[#f5f5f5] transition-colors cursor-pointer";
 
   return (
-    <main className="consolePage">
-      <aside className="consoleSidebar">
-        <div className="consoleBrand">
-          <div className="brandMark mini">
-            <svg viewBox="0 0 48 48" className="brandMarkIcon">
-              <rect x="2" y="2" width="44" height="44" rx="12" />
-              <path d="M14 14h20l-12 20h12" />
-            </svg>
-          </div>
+    <div className="min-h-screen bg-[#fafafa] flex">
+      {/* Sidebar */}
+      <aside className="w-[220px] shrink-0 bg-white border-r border-[#e5e5e5] flex flex-col fixed inset-y-0 left-0 z-20">
+        {/* Brand */}
+        <div className="h-14 flex items-center gap-2.5 px-4 border-b border-[#e5e5e5]">
+          <Logo size={28} />
           <div>
-            <strong>HyPanel</strong>
-            <span>Admin Console</span>
+            <p className="text-sm font-semibold leading-tight">HyPanel</p>
+            <p className="text-[11px] text-[#a3a3a3] leading-tight">Admin</p>
           </div>
         </div>
 
-        <nav className="consoleNav">
-          {sections.map((item) => (
-            <button
-              key={item.id}
-              className={`navItem ${activeSection === item.id ? "active" : ""}`}
-              onClick={() => jumpTo(item.id)}
-            >
-              {item.label}
-            </button>
-          ))}
+        {/* Nav */}
+        <nav className="flex-1 px-2 py-3 space-y-0.5">
+          {sections.map((s) => {
+            const Icon = s.icon;
+            return (
+              <button
+                key={s.id}
+                onClick={() => setActiveSection(s.id)}
+                className={`w-full flex items-center gap-2.5 h-9 px-2.5 rounded-lg text-sm transition-colors cursor-pointer ${
+                  activeSection === s.id
+                    ? "bg-[#f5f5f5] text-[#0a0a0a] font-medium"
+                    : "text-[#737373] hover:bg-[#fafafa] hover:text-[#525252]"
+                }`}
+              >
+                <Icon size={16} />
+                {s.label}
+              </button>
+            );
+          })}
         </nav>
 
-        <div className="sidebarFooter">
-          <div className="statusCard">
-            <span className="statusCardLabel">系统状态</span>
-            <strong>在线</strong>
-            <p>{status}</p>
+        {/* Footer */}
+        <div className="p-3 border-t border-[#e5e5e5]">
+          <div className="flex items-center gap-2 mb-3 px-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#22c55e]" />
+            <span className="text-xs text-[#737373] truncate">{status}</span>
           </div>
-          <button className="ghostButton wide" onClick={handleLogout}>
-            退出管理员
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-2 h-9 px-2.5 rounded-lg text-sm text-[#737373] hover:bg-[#fafafa] hover:text-[#525252] transition-colors cursor-pointer"
+          >
+            <LogOut size={16} />
+            退出
           </button>
         </div>
       </aside>
 
-      <section className="consoleMain">
-        <header className="consoleHeader">
-          <div>
-            <span className="eyebrow">Operations</span>
-            <h1>管理员后台</h1>
-          </div>
-          <div className="consoleHeaderMeta">
-            <div className="statusBar inline">
-              <span className="statusDot" />
-              <span>{status}</span>
-            </div>
-            <button className="heroButton compact" onClick={() => void loadDashboard(token)}>
-              刷新数据
+      {/* Main */}
+      <main className="flex-1 ml-[220px]">
+        {/* Top bar */}
+        <header className="sticky top-0 z-10 bg-[#fafafa]/80 backdrop-blur-sm border-b border-[#e5e5e5]">
+          <div className="h-14 flex items-center justify-between px-6">
+            <h1 className="text-base font-semibold tracking-tight">
+              {sections.find((s) => s.id === activeSection)?.label}
+            </h1>
+            <button
+              onClick={() => void loadDashboard(token)}
+              className="h-8 px-3 flex items-center gap-1.5 text-xs font-medium border border-[#e5e5e5] rounded-md bg-white hover:bg-[#f5f5f5] transition-colors cursor-pointer"
+            >
+              <RefreshCw size={14} />
+              刷新
             </button>
           </div>
         </header>
 
-        <section id="overview" className="consoleSection">
-          <div className="sectionHeading">
+        <div className="p-6">
+          {/* ===== Overview ===== */}
+          {activeSection === "overview" && (
             <div>
-              <h2>总览</h2>
-            </div>
-          </div>
-
-          <div className="overviewGrid">
-            <article className="glassCard actionCard">
-              <div className="cardTopline">注册码</div>
-              <h3>生成验证码</h3>
-              <button className="heroButton" onClick={handleGenerateCode}>
-                生成新验证码
-              </button>
-              <div className="codeStrip">
-                <span>当前验证码</span>
-                <strong>{code || "尚未生成"}</strong>
+              <div className="grid grid-cols-3 gap-3 mb-6">
+                <div className="bg-white border border-[#e5e5e5] rounded-xl p-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Users size={14} className="text-[#a3a3a3]" />
+                    <span className="text-xs text-[#737373] font-medium">
+                      用户总数
+                    </span>
+                  </div>
+                  <p className="text-2xl font-semibold tracking-tight">
+                    {totalUsers}
+                  </p>
+                </div>
+                <div className="bg-white border border-[#e5e5e5] rounded-xl p-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <BarChart3 size={14} className="text-[#a3a3a3]" />
+                    <span className="text-xs text-[#737373] font-medium">
+                      总消耗
+                    </span>
+                  </div>
+                  <p className="text-2xl font-semibold tracking-tight">
+                    {formatGB(totalUsed)}
+                  </p>
+                </div>
+                <div className="bg-white border border-[#e5e5e5] rounded-xl p-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-2 h-2 rounded-full bg-[#22c55e]" />
+                    <span className="text-xs text-[#737373] font-medium">
+                      在线
+                    </span>
+                  </div>
+                  <p className="text-2xl font-semibold tracking-tight">
+                    {onlineUsers}
+                  </p>
+                </div>
               </div>
-            </article>
 
-            <div className="metricGrid">
-              <article className="metricCard">
-                <span>用户总数</span>
-                <strong>{totalUsers}</strong>
-                <small>已注册用户</small>
-              </article>
-              <article className="metricCard">
-                <span>总流量消耗</span>
-                <strong>{formatGB(totalUsed)}</strong>
-                <small>Hysteria 汇总</small>
-              </article>
-              <article className="metricCard">
-                <span>在线用户</span>
-                <strong>{onlineUsers}</strong>
-                <small>当前有设备在线</small>
-              </article>
-              <article className="metricCard">
-                <span>验证码时效</span>
-                <strong>1H</strong>
-                <small>默认过期时间</small>
-              </article>
-            </div>
-          </div>
-        </section>
-
-        <section id="users" className="consoleSection">
-          <div className="sectionHeading">
-            <div>
-              <h2>用户视图</h2>
-            </div>
-            <input
-              className="searchField"
-              value={keyword}
-              onChange={(event) => setKeyword(event.target.value)}
-              placeholder="搜索用户名"
-            />
-          </div>
-
-          <div className="glassCard tableCard">
-            <table className="table refined">
-              <thead>
-                <tr>
-                  <th>用户名</th>
-                  <th>状态</th>
-                  <th>总流量</th>
-                  <th>已用</th>
-                  <th>剩余</th>
-                  <th>在线设备</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredUsers.length ? (
-                  filteredUsers.map((item) => (
-                    <tr key={item.username}>
-                      <td className="strongCell">{item.username}</td>
-                      <td>
-                        <span className={`statePill ${item.status === "active" ? "green" : "gray"}`}>
-                          {item.status}
-                        </span>
-                      </td>
-                      <td>{item.totalTrafficGB} GB</td>
-                      <td>{formatGB(item.usedTrafficBytes)}</td>
-                      <td>{item.remainingTrafficGB} GB</td>
-                      <td>{item.onlineCount}</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={6} className="muted centerCell">
-                      没有匹配到用户
-                    </td>
-                  </tr>
+              {/* Generate code */}
+              <div className="bg-white border border-[#e5e5e5] rounded-xl p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold">注册码</h3>
+                    <p className="text-xs text-[#737373] mt-0.5">
+                      一次性验证码，有效期 1 小时
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleGenerateCode}
+                    className="h-9 px-4 bg-[#0a0a0a] text-white text-sm font-medium rounded-md hover:bg-[#1a1a1a] transition-colors cursor-pointer"
+                  >
+                    生成
+                  </button>
+                </div>
+                {code && (
+                  <div className="flex items-center justify-between bg-[#fafafa] border border-[#f0f0f0] rounded-lg p-3 mt-4">
+                    <span className="text-xs text-[#737373]">当前验证码</span>
+                    <span className="font-mono text-lg font-semibold tracking-widest">
+                      {code}
+                    </span>
+                  </div>
                 )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <section id="actions" className="consoleSection">
-          <div className="sectionHeading">
-            <div>
-              <h2>用户操作</h2>
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="glassCard tableCard">
-            <table className="table refined">
-              <thead>
-                <tr>
-                  <th>用户</th>
-                  <th>状态</th>
-                  <th>流量额度</th>
-                  <th>状态操作</th>
-                  <th>密码操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredUsers.length ? (
-                  filteredUsers.map((item) => (
-                    <tr key={`${item.username}-action`}>
-                      <td className="strongCell">{item.username}</td>
-                      <td>{item.status}</td>
-                      <td>
-                        <div className="actionInline">
-                          <input
-                            className="quotaField"
-                            value={editingQuota[item.username] ?? String(item.totalTrafficGB)}
-                            onChange={(event) =>
-                              setEditingQuota((prev) => ({
-                                ...prev,
-                                [item.username]: event.target.value,
-                              }))
-                            }
-                          />
-                          <button
-                            className="ghostButton"
-                            onClick={() => void handleUpdateQuota(item.username)}
+          {/* ===== Users ===== */}
+          {activeSection === "users" && (
+            <div>
+              <div className="mb-4">
+                <div className="relative w-72">
+                  <Search
+                    size={14}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a3a3a3]"
+                  />
+                  <input
+                    value={keyword}
+                    onChange={(e) => setKeyword(e.target.value)}
+                    placeholder="搜索用户名..."
+                    className="w-full h-9 pl-9 pr-3 text-sm border border-[#e5e5e5] rounded-md bg-white placeholder:text-[#a3a3a3] focus:outline-none focus:ring-2 focus:ring-[#0a0a0a]/10 focus:border-[#0a0a0a] transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-white border border-[#e5e5e5] rounded-xl overflow-hidden">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-[#e5e5e5]">
+                      <th className={thClass}>用户名</th>
+                      <th className={thClass}>状态</th>
+                      <th className={thClass}>总流量</th>
+                      <th className={thClass}>已用</th>
+                      <th className={thClass}>剩余</th>
+                      <th className={thClass}>在线</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#f0f0f0]">
+                    {filteredUsers.map((u) => (
+                      <tr
+                        key={u.username}
+                        className="hover:bg-[#fafafa] transition-colors"
+                      >
+                        <td className={`${tdClass} font-medium`}>
+                          {u.username}
+                        </td>
+                        <td className={tdClass}>
+                          <span
+                            className={`inline-flex items-center h-5 px-2 rounded text-[11px] font-semibold ${
+                              u.status === "active"
+                                ? "bg-[#22c55e]/10 text-[#16a34a]"
+                                : "bg-[#f5f5f5] text-[#a3a3a3]"
+                            }`}
                           >
-                            保存
-                          </button>
-                        </div>
-                      </td>
-                      <td>
-                        <button
-                          className="ghostButton"
-                          onClick={() =>
-                            void handleToggleStatus(
-                              item.username,
-                              item.status === "active" ? "disabled" : "active",
-                            )
-                          }
-                        >
-                          {item.status === "active" ? "禁用" : "启用"}
-                        </button>
-                      </td>
-                      <td>
-                        <button
-                          className="ghostButton"
-                          onClick={() => void handleResetPassword(item.username)}
-                        >
-                          重置密码
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={5} className="muted centerCell">
-                      当前没有可操作的用户
-                    </td>
-                  </tr>
+                            {u.status}
+                          </span>
+                        </td>
+                        <td className={`${tdClass} text-[#525252]`}>
+                          {u.totalTrafficGB} GB
+                        </td>
+                        <td className={`${tdClass} text-[#525252]`}>
+                          {formatGB(u.usedTrafficBytes)}
+                        </td>
+                        <td className={`${tdClass} text-[#525252]`}>
+                          {u.remainingTrafficGB} GB
+                        </td>
+                        <td className={`${tdClass} text-[#525252]`}>
+                          {u.onlineCount}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {!filteredUsers.length && (
+                  <div className="py-12 text-center text-sm text-[#a3a3a3]">
+                    没有匹配到用户
+                  </div>
                 )}
-              </tbody>
-            </table>
-          </div>
-
-          {resetResult ? (
-            <div className="glassCard resetCard">
-              <div className="sectionHeading tight">
-                <div>
-                  <h3>最近一次重置结果</h3>
-                  <p>新密码已经生效，请尽快发给对应用户。</p>
-                </div>
-              </div>
-              <div className="resetGrid">
-                <div className="miniPanel dark">
-                  <span>用户名</span>
-                  <strong>{resetResult.username}</strong>
-                </div>
-                <div className="miniPanel dark">
-                  <span>新密码</span>
-                  <strong>{resetResult.password}</strong>
-                </div>
-              </div>
-              <div className="copyPanel dark">
-                <code>{resetResult.subscriptionUrl}</code>
               </div>
             </div>
-          ) : null}
-        </section>
+          )}
 
-        <section id="traffic" className="consoleSection">
-          <div className="sectionHeading">
+          {/* ===== Actions ===== */}
+          {activeSection === "actions" && (
             <div>
-              <h2>流量统计</h2>
-            </div>
-          </div>
-
-          <div className="glassCard tableCard">
-            <table className="table refined">
-              <thead>
-                <tr>
-                  <th>用户名</th>
-                  <th>上传</th>
-                  <th>下载</th>
-                  <th>总量</th>
-                  <th>在线设备</th>
-                </tr>
-              </thead>
-              <tbody>
-                {dashboard?.traffic.length ? (
-                  dashboard.traffic.map((item) => (
-                    <tr key={item.username}>
-                      <td className="strongCell">{item.username}</td>
-                      <td>{formatGB(item.uploadBytes)}</td>
-                      <td>{formatGB(item.downloadBytes)}</td>
-                      <td>{formatGB(item.totalBytes)}</td>
-                      <td>{item.onlineCount}</td>
+              <div className="bg-white border border-[#e5e5e5] rounded-xl overflow-hidden">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-[#e5e5e5]">
+                      <th className={thClass}>用户</th>
+                      <th className={thClass}>状态</th>
+                      <th className={thClass}>流量额度 (GB)</th>
+                      <th className={`${thClass} text-right`}>操作</th>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={5} className="muted centerCell">
-                      暂无统计数据
-                    </td>
-                  </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#f0f0f0]">
+                    {filteredUsers.map((u) => (
+                      <tr
+                        key={u.username}
+                        className="hover:bg-[#fafafa] transition-colors"
+                      >
+                        <td className={`${tdClass} font-medium`}>
+                          {u.username}
+                        </td>
+                        <td className={tdClass}>
+                          <span
+                            className={`inline-flex items-center h-5 px-2 rounded text-[11px] font-semibold ${
+                              u.status === "active"
+                                ? "bg-[#22c55e]/10 text-[#16a34a]"
+                                : "bg-[#f5f5f5] text-[#a3a3a3]"
+                            }`}
+                          >
+                            {u.status}
+                          </span>
+                        </td>
+                        <td className={tdClass}>
+                          <div className="flex items-center gap-2">
+                            <input
+                              className="w-20 h-8 px-2 text-sm border border-[#e5e5e5] rounded-md focus:outline-none focus:ring-2 focus:ring-[#0a0a0a]/10 transition-colors"
+                              value={
+                                editingQuota[u.username] ??
+                                String(u.totalTrafficGB)
+                              }
+                              onChange={(e) =>
+                                setEditingQuota((prev) => ({
+                                  ...prev,
+                                  [u.username]: e.target.value,
+                                }))
+                              }
+                            />
+                            <button
+                              className={ghostBtnClass}
+                              onClick={() => void handleUpdateQuota(u.username)}
+                            >
+                              保存
+                            </button>
+                          </div>
+                        </td>
+                        <td className={`${tdClass} text-right`}>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              className={ghostBtnClass}
+                              onClick={() =>
+                                void handleToggleStatus(
+                                  u.username,
+                                  u.status === "active"
+                                    ? "disabled"
+                                    : "active",
+                                )
+                              }
+                            >
+                              {u.status === "active" ? "禁用" : "启用"}
+                            </button>
+                            <button
+                              className={`${ghostBtnClass} text-[#ef4444] border-[#fecaca] hover:bg-[#fef2f2]`}
+                              onClick={() =>
+                                void handleResetPassword(u.username)
+                              }
+                            >
+                              重置密码
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {!filteredUsers.length && (
+                  <div className="py-12 text-center text-sm text-[#a3a3a3]">
+                    暂无用户
+                  </div>
                 )}
-              </tbody>
-            </table>
+              </div>
+            </div>
+          )}
+
+          {/* ===== Traffic ===== */}
+          {activeSection === "traffic" && (
+            <div>
+              <div className="bg-white border border-[#e5e5e5] rounded-xl overflow-hidden">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-[#e5e5e5]">
+                      <th className={thClass}>用户名</th>
+                      <th className={thClass}>上传</th>
+                      <th className={thClass}>下载</th>
+                      <th className={thClass}>总量</th>
+                      <th className={thClass}>在线设备</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#f0f0f0]">
+                    {dashboard?.traffic.length ? (
+                      dashboard.traffic.map((t) => (
+                        <tr
+                          key={t.username}
+                          className="hover:bg-[#fafafa] transition-colors"
+                        >
+                          <td className={`${tdClass} font-medium`}>
+                            {t.username}
+                          </td>
+                          <td className={`${tdClass} text-[#525252]`}>
+                            {formatGB(t.uploadBytes)}
+                          </td>
+                          <td className={`${tdClass} text-[#525252]`}>
+                            {formatGB(t.downloadBytes)}
+                          </td>
+                          <td className={`${tdClass} text-[#525252]`}>
+                            {formatGB(t.totalBytes)}
+                          </td>
+                          <td className={`${tdClass} text-[#525252]`}>
+                            {t.onlineCount}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="py-12 text-center text-sm text-[#a3a3a3]"
+                        >
+                          暂无数据
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
+
+      {/* Password reset modal */}
+      {resetResult && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          onClick={() => setResetResult(null)}
+        >
+          <div
+            className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-lg border border-[#e5e5e5]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold">密码已重置</h3>
+              <button
+                onClick={() => setResetResult(null)}
+                className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[#f5f5f5] transition-colors cursor-pointer"
+              >
+                <X size={16} className="text-[#737373]" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div className="bg-[#fafafa] rounded-lg p-3 border border-[#f0f0f0]">
+                <span className="text-xs text-[#737373]">用户名</span>
+                <p className="text-sm font-semibold mt-0.5">
+                  {resetResult.username}
+                </p>
+              </div>
+              <div className="bg-[#fafafa] rounded-lg p-3 border border-[#f0f0f0]">
+                <span className="text-xs text-[#737373]">新密码</span>
+                <p className="text-sm font-semibold mt-0.5">
+                  {resetResult.password}
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-[#fafafa] rounded-lg p-3 border border-[#f0f0f0] mb-4">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs text-[#737373]">订阅地址</span>
+                <button
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(
+                      resetResult.subscriptionUrl,
+                    );
+                    setStatus("订阅地址已复制");
+                  }}
+                  className="text-xs text-[#737373] hover:text-[#0a0a0a] flex items-center gap-1 cursor-pointer"
+                >
+                  <Copy size={12} />
+                  复制
+                </button>
+              </div>
+              <code className="text-xs break-all leading-relaxed font-mono text-[#525252]">
+                {resetResult.subscriptionUrl}
+              </code>
+            </div>
+
+            <button
+              onClick={() => setResetResult(null)}
+              className="w-full h-9 bg-[#0a0a0a] text-white text-sm font-medium rounded-md hover:bg-[#1a1a1a] transition-colors cursor-pointer"
+            >
+              关闭
+            </button>
           </div>
-        </section>
-      </section>
-    </main>
+        </div>
+      )}
+    </div>
   );
 }

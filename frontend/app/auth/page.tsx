@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Copy } from "lucide-react";
+import { Logo } from "../components/logo";
 
 type RegisterResponse = {
   username: string;
@@ -14,60 +16,25 @@ type RegisterResponse = {
 const apiBase =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/v1";
 
-function BrandMark() {
-  return (
-    <div className="brandMark" aria-hidden="true">
-      <svg viewBox="0 0 48 48" className="brandMarkIcon">
-        <rect x="2" y="2" width="44" height="44" rx="12" />
-        <path d="M14 14h20l-12 20h12" />
-      </svg>
-    </div>
-  );
-}
-
-function FieldIcon({ type }: { type: "user" | "lock" | "ticket" }) {
-  if (type === "user") {
-    return (
-      <svg viewBox="0 0 24 24" className="fieldIcon" aria-hidden="true">
-        <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-4.418 0-8 2.239-8 5v1h16v-1c0-2.761-3.582-5-8-5Z" />
-      </svg>
-    );
-  }
-
-  if (type === "lock") {
-    return (
-      <svg viewBox="0 0 24 24" className="fieldIcon" aria-hidden="true">
-        <path d="M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2Zm-7-2a2 2 0 0 1 4 0v2h-4Z" />
-      </svg>
-    );
-  }
-
-  return (
-    <svg viewBox="0 0 24 24" className="fieldIcon" aria-hidden="true">
-      <path d="M4 8.5A2.5 2.5 0 0 1 6.5 6H20v5.5a2.5 2.5 0 0 1-2.5 2.5H15l-2.5 2.5L10 14H6.5A2.5 2.5 0 0 1 4 11.5Z" />
-    </svg>
-  );
-}
-
 export default function AuthPage() {
   const router = useRouter();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
-  const [status, setStatus] = useState("输入账号密码登录，或切换到注册使用验证码开通。");
+  const [status, setStatus] = useState("");
   const [result, setResult] = useState<RegisterResponse | null>(null);
   const [busy, setBusy] = useState(false);
 
   const title = useMemo(
-    () => (mode === "login" ? "欢迎来到 HyPanel" : "使用验证码开通账号"),
+    () => (mode === "login" ? "登录到 HyPanel" : "注册新账号"),
     [mode],
   );
 
   async function handleLogin() {
     setBusy(true);
     setResult(null);
-    setStatus("正在验证账号...");
+    setStatus("正在验证...");
 
     try {
       const response = await fetch(`${apiBase}/auth/login`, {
@@ -103,7 +70,7 @@ export default function AuthPage() {
       });
 
       if (!response.ok) {
-        setStatus("验证码无效或已过期，请联系管理员重新生成。");
+        setStatus("验证码无效或已过期。");
         return;
       }
 
@@ -112,7 +79,7 @@ export default function AuthPage() {
       setUsername(data.username);
       setPassword(data.password);
       setMode("login");
-      setStatus("账号已生成，使用下方账号密码即可直接登录。");
+      setStatus("账号已生成，可直接登录。");
     } finally {
       setBusy(false);
     }
@@ -120,118 +87,140 @@ export default function AuthPage() {
 
   async function copy(text: string, label: string) {
     await navigator.clipboard.writeText(text);
-    setStatus(`${label}已复制。`);
+    setStatus(`${label}已复制`);
   }
 
+  const inputClass =
+    "w-full h-10 px-3 text-sm border border-[#e5e5e5] rounded-lg bg-white text-[#0a0a0a] placeholder:text-[#a3a3a3] focus:outline-none focus:ring-2 focus:ring-[#0a0a0a]/10 focus:border-[#0a0a0a] transition-colors";
+  const primaryBtnClass =
+    "w-full h-10 bg-[#0a0a0a] text-white text-sm font-medium rounded-lg hover:bg-[#1a1a1a] disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer";
+
   return (
-    <main className="authPage">
-      <section className="authShell">
-        <div className="authIntro">
-          <BrandMark />
-          <span className="eyebrow">HyPanel User Portal</span>
-          <h1>{title}</h1>
-          <div className="authSwitch">
+    <main className="min-h-screen bg-[#fafafa] flex items-center justify-center px-4">
+      <div className="w-full max-w-[400px]">
+        {/* Brand */}
+        <div className="flex flex-col items-center mb-8">
+          <Logo size={44} />
+          <h1 className="mt-3 text-xl font-semibold tracking-tight text-[#0a0a0a]">
+            {title}
+          </h1>
+        </div>
+
+        {/* Card */}
+        <div className="bg-white border border-[#e5e5e5] rounded-2xl p-6 shadow-sm">
+          {/* Tab switcher */}
+          <div className="flex gap-1 p-1 bg-[#f5f5f5] rounded-lg mb-6">
             <button
-              className={`segment ${mode === "login" ? "active" : ""}`}
+              className={`flex-1 h-9 rounded-md text-sm font-medium transition-all cursor-pointer ${
+                mode === "login"
+                  ? "bg-white text-[#0a0a0a] shadow-sm"
+                  : "text-[#737373] hover:text-[#525252]"
+              }`}
               onClick={() => setMode("login")}
             >
               登录
             </button>
             <button
-              className={`segment ${mode === "register" ? "active" : ""}`}
+              className={`flex-1 h-9 rounded-md text-sm font-medium transition-all cursor-pointer ${
+                mode === "register"
+                  ? "bg-white text-[#0a0a0a] shadow-sm"
+                  : "text-[#737373] hover:text-[#525252]"
+              }`}
               onClick={() => setMode("register")}
             >
               注册
             </button>
           </div>
-        </div>
 
-        <section className="authCard">
-          <div className="statusBar">
-            <span className="statusDot" />
-            <span>{status}</span>
-          </div>
+          {/* Status */}
+          {status && (
+            <div className="flex items-center gap-2 mb-5 text-sm text-[#737373]">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#22c55e] shrink-0" />
+              <span>{status}</span>
+            </div>
+          )}
 
+          {/* Login form */}
           {mode === "login" ? (
-            <div className="stack">
-              <label className="field">
-                <span className="fieldLabel">用户名</span>
-                <div className="fieldInputWrap">
-                  <FieldIcon type="user" />
-                  <input
-                    className="fieldInput"
-                    value={username}
-                    onChange={(event) => setUsername(event.target.value)}
-                    placeholder="输入系统分配的用户名"
-                  />
-                </div>
-              </label>
-
-              <label className="field">
-                <span className="fieldLabel">密码</span>
-                <div className="fieldInputWrap">
-                  <FieldIcon type="lock" />
-                  <input
-                    className="fieldInput"
-                    type="password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    placeholder="输入你的密码"
-                  />
-                </div>
-              </label>
-
-              <button className="heroButton" onClick={handleLogin} disabled={busy}>
-                {busy ? "登录中..." : "进入个人中心"}
+            <div className="space-y-3">
+              <input
+                className={inputClass}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="用户名"
+              />
+              <input
+                className={inputClass}
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="密码"
+              />
+              <button
+                className={primaryBtnClass}
+                onClick={handleLogin}
+                disabled={busy}
+              >
+                {busy ? "登录中..." : "登录"}
               </button>
             </div>
           ) : (
-            <div className="stack">
-              <label className="field">
-                <span className="fieldLabel">验证码</span>
-                <div className="fieldInputWrap">
-                  <FieldIcon type="ticket" />
-                  <input
-                    className="fieldInput"
-                    value={code}
-                    onChange={(event) => setCode(event.target.value)}
-                    placeholder="输入管理员提供的 6 位验证码"
-                  />
-                </div>
-              </label>
-
-              <button className="heroButton" onClick={handleRegister} disabled={busy}>
+            <div className="space-y-3">
+              <input
+                className={inputClass}
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="输入 6 位验证码"
+              />
+              <button
+                className={primaryBtnClass}
+                onClick={handleRegister}
+                disabled={busy}
+              >
                 {busy ? "注册中..." : "生成账号"}
               </button>
             </div>
           )}
 
-          {result ? (
-            <div className="credentialCard">
-              <div className="credentialHead">
-                <strong>账号已开通</strong>
-                <span>现在可以直接登录，也可以先复制订阅地址。</span>
-              </div>
-              <div className="credentialGrid">
-                <div className="miniPanel">
-                  <span>用户名</span>
-                  <strong>{result.username}</strong>
+          {/* Registration result */}
+          {result && (
+            <div className="mt-6 pt-6 border-t border-[#e5e5e5]">
+              <p className="text-sm font-semibold text-[#0a0a0a]">
+                账号已开通
+              </p>
+              <p className="text-xs text-[#737373] mt-1 mb-4">
+                请保存以下信息，可直接登录。
+              </p>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div className="bg-[#fafafa] rounded-lg p-3 border border-[#f0f0f0]">
+                  <span className="text-xs text-[#737373]">用户名</span>
+                  <p className="text-sm font-semibold mt-0.5">
+                    {result.username}
+                  </p>
                 </div>
-                <div className="miniPanel">
-                  <span>初始密码</span>
-                  <strong>{result.password}</strong>
+                <div className="bg-[#fafafa] rounded-lg p-3 border border-[#f0f0f0]">
+                  <span className="text-xs text-[#737373]">初始密码</span>
+                  <p className="text-sm font-semibold mt-0.5">
+                    {result.password}
+                  </p>
                 </div>
               </div>
-              <div className="copyPanel">
-                <code>{result.subscriptionUrl}</code>
-                <button className="ghostButton" onClick={() => copy(result.subscriptionUrl, "订阅地址")}>
-                  复制订阅地址
+              <div className="flex items-center gap-2 bg-[#fafafa] border border-[#f0f0f0] rounded-lg p-3">
+                <code className="flex-1 text-xs truncate text-[#737373] font-mono">
+                  {result.subscriptionUrl}
+                </code>
+                <button
+                  className="shrink-0 h-8 px-3 text-xs font-medium border border-[#e5e5e5] rounded-md hover:bg-[#f0f0f0] transition-colors flex items-center gap-1.5 cursor-pointer"
+                  onClick={() => copy(result.subscriptionUrl, "订阅地址")}
+                >
+                  <Copy size={12} />
+                  复制
                 </button>
               </div>
             </div>
-          ) : null}
-        </section>
-      </section>
+          )}
+        </div>
+      </div>
     </main>
   );
 }
