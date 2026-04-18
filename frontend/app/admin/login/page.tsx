@@ -56,10 +56,7 @@ export default function AdminLoginPage() {
         <div className="adminLoginAside">
           <AdminShield />
           <span className="eyebrow">HyPanel Admin Console</span>
-          <h1>进入管理员控制台</h1>
-          <p>
-            后续你可以把这个入口直接绑定到 `hy2-admin.yxd.dpdns.org`，不再需要通过首页跳转。
-          </p>
+          <h1>管理员控制台</h1>
         </div>
 
         <section className="adminLoginCard">

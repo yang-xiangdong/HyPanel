@@ -66,15 +66,11 @@ export default function MePage() {
 
   return (
     <main className="userPortalPage">
-      <div className="authGlow authGlowA" />
-      <div className="authGlow authGlowB" />
-
       <section className="userPortalShell">
         <header className="userPortalHeader">
           <div>
             <span className="eyebrow">User Center</span>
             <h1>{profile?.username ?? "个人中心"}</h1>
-            <p>查看流量额度、复制专属订阅地址，并在客户端中设置定时刷新。</p>
           </div>
           <div className="consoleHeaderMeta">
             <div className="statusBar inline">
@@ -110,7 +106,6 @@ export default function MePage() {
             <div className="sectionHeading tight">
               <div>
                 <h2>订阅地址</h2>
-                <p>推荐直接导入 Clash Verge 订阅，后续变更会自动同步。</p>
               </div>
               <button
                 className="heroButton compact"
@@ -129,7 +124,6 @@ export default function MePage() {
             <div className="sectionHeading tight">
               <div>
                 <h2>使用说明</h2>
-                <p>保持页面结构简洁，但细节更完整。</p>
               </div>
             </div>
             <div className="guideList">

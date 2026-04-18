@@ -248,7 +248,6 @@ export default function AdminDashboardPage() {
           <div>
             <span className="eyebrow">Operations</span>
             <h1>管理员后台</h1>
-            <p>分区式控制台更适合用户量变大后的长期维护，也更适合后续扩展功能。</p>
           </div>
           <div className="consoleHeaderMeta">
             <div className="statusBar inline">
@@ -265,15 +264,13 @@ export default function AdminDashboardPage() {
           <div className="sectionHeading">
             <div>
               <h2>总览</h2>
-              <p>优先展示关键平台指标和注册码动作。</p>
             </div>
           </div>
 
           <div className="overviewGrid">
             <article className="glassCard actionCard">
               <div className="cardTopline">注册码</div>
-              <h3>生成用户开通验证码</h3>
-              <p>单次生成，默认有效 1 小时。适合人工发放和临时审核。</p>
+              <h3>生成验证码</h3>
               <button className="heroButton" onClick={handleGenerateCode}>
                 生成新验证码
               </button>
@@ -312,7 +309,6 @@ export default function AdminDashboardPage() {
           <div className="sectionHeading">
             <div>
               <h2>用户视图</h2>
-              <p>搜索、浏览和对比所有用户的额度与在线情况。</p>
             </div>
             <input
               className="searchField"
@@ -366,7 +362,6 @@ export default function AdminDashboardPage() {
           <div className="sectionHeading">
             <div>
               <h2>用户操作</h2>
-              <p>统一处理状态切换、流量额度调整和密码重置。</p>
             </div>
           </div>
 
@@ -470,7 +465,6 @@ export default function AdminDashboardPage() {
           <div className="sectionHeading">
             <div>
               <h2>流量统计</h2>
-              <p>保留原始上传、下载、总量与在线设备视图，用于排查与核对。</p>
             </div>
           </div>
 

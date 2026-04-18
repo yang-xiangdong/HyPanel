@@ -125,17 +125,11 @@ export default function AuthPage() {
 
   return (
     <main className="authPage">
-      <div className="authGlow authGlowA" />
-      <div className="authGlow authGlowB" />
-
       <section className="authShell">
         <div className="authIntro">
           <BrandMark />
           <span className="eyebrow">HyPanel User Portal</span>
           <h1>{title}</h1>
-          <p>
-            简单，但不粗糙。账号开通、登录、订阅导出都收进一个控件里，直接面向用户域名使用。
-          </p>
           <div className="authSwitch">
             <button
               className={`segment ${mode === "login" ? "active" : ""}`}
