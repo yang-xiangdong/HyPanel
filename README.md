@@ -36,6 +36,9 @@ For Hysteria's HTTP auth mode, HyPanel expects the incoming `auth` field in `use
 
 - Start in the foreground: `docker compose --env-file .env -f deploy/docker-compose.yml up --build`
 - Start in the background: `docker compose --env-file .env -f deploy/docker-compose.yml up -d --build`
+- Restart all services: `docker compose --env-file .env -f deploy/docker-compose.yml restart`
+- Rebuild and restart frontend only: `docker compose --env-file .env -f deploy/docker-compose.yml up -d --build frontend`
+- Rebuild and restart frontend + backend: `docker compose --env-file .env -f deploy/docker-compose.yml up -d --build frontend backend`
 - Stop services: `docker compose --env-file .env -f deploy/docker-compose.yml stop`
 - Stop and remove containers/network: `docker compose --env-file .env -f deploy/docker-compose.yml down`
 - View service status: `docker compose --env-file .env -f deploy/docker-compose.yml ps`
