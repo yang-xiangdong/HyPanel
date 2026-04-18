@@ -15,6 +15,7 @@ type Config struct {
 	AdminBootstrapEmail  string
 	AdminBootstrapPass   string
 	HysteriaAPIBaseURL   string
+	HysteriaAPIPort      string
 	HysteriaAPIToken     string
 	SubscriptionBaseURL  string
 	HysteriaServer       string
@@ -24,7 +25,6 @@ type Config struct {
 	HysteriaObfs         string
 	HysteriaObfsPassword string
 	HysteriaSkipCert     string
-	HysteriaAuthSecret   string
 }
 
 func Load() Config {
@@ -37,7 +37,8 @@ func Load() Config {
 		JWTSecret:           envOrDefault("JWT_SECRET", "replace-me"),
 		AdminBootstrapEmail: envOrDefault("ADMIN_BOOTSTRAP_EMAIL", "admin@example.com"),
 		AdminBootstrapPass:  envOrDefault("ADMIN_BOOTSTRAP_PASSWORD", "ChangeThisNow123!"),
-		HysteriaAPIBaseURL:  envOrDefault("HYSTERIA_API_BASE_URL", ""),
+		HysteriaAPIPort:     envOrDefault("HYSTERIA_API_PORT", "25413"),
+		HysteriaAPIBaseURL:  hysteriaAPIBaseURL(),
 		HysteriaAPIToken:    envOrDefault("HYSTERIA_API_TOKEN", ""),
 		SubscriptionBaseURL: envOrDefault("SUBSCRIPTION_BASE_URL", "http://localhost:8080/api/v1/subscriptions"),
 		HysteriaServer:      envOrDefault("HYSTERIA_SERVER", "yxd.dpdns.org"),
@@ -47,7 +48,6 @@ func Load() Config {
 		HysteriaObfs:        envOrDefault("HYSTERIA_OBFS", "salamander"),
 		HysteriaObfsPassword: envOrDefault("HYSTERIA_OBFS_PASSWORD", ""),
 		HysteriaSkipCert:    envOrDefault("HYSTERIA_SKIP_CERT_VERIFY", "false"),
-		HysteriaAuthSecret:  envOrDefault("HYSTERIA_AUTH_SECRET", ""),
 	}
 }
 
@@ -68,4 +68,13 @@ func envOrDefault(key, fallback string) string {
 	}
 
 	return value
+}
+
+func hysteriaAPIBaseURL() string {
+	if baseURL := os.Getenv("HYSTERIA_API_BASE_URL"); baseURL != "" {
+		return baseURL
+	}
+
+	port := envOrDefault("HYSTERIA_API_PORT", "25413")
+	return fmt.Sprintf("http://host.docker.internal:%s", port)
 }

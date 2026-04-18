@@ -370,11 +370,6 @@ func (h *Handler) subscription(c *gin.Context) {
 }
 
 func (h *Handler) hysteriaAuth(c *gin.Context) {
-	if h.config.HysteriaAuthSecret != "" && c.GetHeader("Authorization") != h.config.HysteriaAuthSecret {
-		c.JSON(http.StatusUnauthorized, gin.H{"ok": false})
-		return
-	}
-
 	var req hysteriaAuthRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"ok": false})
@@ -393,12 +388,12 @@ func (h *Handler) hysteriaAuth(c *gin.Context) {
 		return
 	}
 
-	if user.Status != "active" {
+	if user.ProxyAuthSecret != password {
 		c.JSON(http.StatusOK, gin.H{"ok": false})
 		return
 	}
 
-	if user.ProxyAuthSecret != password {
+	if user.Status != "active" {
 		c.JSON(http.StatusOK, gin.H{"ok": false})
 		return
 	}

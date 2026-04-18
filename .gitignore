@@ -30,3 +30,8 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# Build outputs
+backend/server
+frontend/.next/
+frontend/node_modules/
