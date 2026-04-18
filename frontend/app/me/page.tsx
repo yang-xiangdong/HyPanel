@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -23,12 +22,12 @@ export default function MePage() {
   const router = useRouter();
   const [token, setToken] = useState("");
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [status, setStatus] = useState("正在加载个人信息...");
+  const [status, setStatus] = useState("正在同步你的流量数据");
 
   useEffect(() => {
     const saved = window.localStorage.getItem("hypanel_user_token");
     if (!saved) {
-      router.push("/login");
+      router.push("/auth");
       return;
     }
     setToken(saved);
@@ -52,7 +51,7 @@ export default function MePage() {
 
     const data = (await response.json()) as UserProfile;
     setProfile(data);
-    setStatus("个人信息已更新");
+    setStatus("个人信息已同步");
   }
 
   async function copy(text: string, label: string) {
@@ -62,71 +61,94 @@ export default function MePage() {
 
   function handleLogout() {
     window.localStorage.removeItem("hypanel_user_token");
-    router.push("/login");
+    router.push("/auth");
   }
 
   return (
-    <main className="page">
-      <section className="hero">
-        <h1>个人中心</h1>
-        <p>查看自己的流量额度和 Clash Verge 订阅地址。</p>
-      </section>
+    <main className="userPortalPage">
+      <div className="authGlow authGlowA" />
+      <div className="authGlow authGlowB" />
 
-      <section className="toolbar">
-        <span className="pill success">{status}</span>
-        <button className="button secondary small" onClick={handleLogout}>
-          退出登录
-        </button>
-      </section>
-
-      <section className="grid">
-        <article className="card span-12">
-          <div className="stats">
-            <div className="stat">
-              <span className="muted">用户名</span>
-              <strong>{profile?.username ?? "-"}</strong>
-            </div>
-            <div className="stat">
-              <span className="muted">总流量</span>
-              <strong>{profile?.totalTrafficGB ?? 0} GB</strong>
-            </div>
-            <div className="stat">
-              <span className="muted">剩余流量</span>
-              <strong>{profile?.remainingTrafficGB ?? 0} GB</strong>
-            </div>
+      <section className="userPortalShell">
+        <header className="userPortalHeader">
+          <div>
+            <span className="eyebrow">User Center</span>
+            <h1>{profile?.username ?? "个人中心"}</h1>
+            <p>查看流量额度、复制专属订阅地址，并在客户端中设置定时刷新。</p>
           </div>
-        </article>
-
-        <article className="card span-12">
-          <h2>订阅地址</h2>
-          <p>复制到 Clash Verge 的订阅设置中即可，客户端可以定时刷新。</p>
-          <div className="inlineRow wrap">
-            <code className="code long">{profile?.subscriptionUrl ?? "-"}</code>
-            <button
-              className="button"
-              onClick={() => copy(profile?.subscriptionUrl ?? "", "订阅地址")}
-              disabled={!profile?.subscriptionUrl}
-            >
-              复制订阅地址
+          <div className="consoleHeaderMeta">
+            <div className="statusBar inline">
+              <span className="statusDot" />
+              <span>{status}</span>
+            </div>
+            <button className="ghostButton" onClick={handleLogout}>
+              退出登录
             </button>
           </div>
-        </article>
+        </header>
 
-        <article className="card span-12">
-          <h2>流量明细</h2>
-          <p>当前已用流量来自 Hysteria Traffic Stats API 聚合结果。</p>
-          <div className="notice">已用流量：{formatGB(profile?.usedTrafficBytes ?? 0)}</div>
-        </article>
+        <section className="portalMetrics">
+          <article className="metricCard large">
+            <span>总流量</span>
+            <strong>{profile?.totalTrafficGB ?? 0} GB</strong>
+            <small>套餐总额度</small>
+          </article>
+          <article className="metricCard large">
+            <span>剩余流量</span>
+            <strong>{profile?.remainingTrafficGB ?? 0} GB</strong>
+            <small>实时扣减</small>
+          </article>
+          <article className="metricCard large">
+            <span>已用流量</span>
+            <strong>{formatGB(profile?.usedTrafficBytes ?? 0)}</strong>
+            <small>来自 Hysteria 统计</small>
+          </article>
+        </section>
+
+        <section className="portalGrid">
+          <article className="glassCard spanWide">
+            <div className="sectionHeading tight">
+              <div>
+                <h2>订阅地址</h2>
+                <p>推荐直接导入 Clash Verge 订阅，后续变更会自动同步。</p>
+              </div>
+              <button
+                className="heroButton compact"
+                onClick={() => copy(profile?.subscriptionUrl ?? "", "订阅地址")}
+                disabled={!profile?.subscriptionUrl}
+              >
+                复制订阅
+              </button>
+            </div>
+            <div className="copyPanel">
+              <code>{profile?.subscriptionUrl ?? "-"}</code>
+            </div>
+          </article>
+
+          <article className="glassCard">
+            <div className="sectionHeading tight">
+              <div>
+                <h2>使用说明</h2>
+                <p>保持页面结构简洁，但细节更完整。</p>
+              </div>
+            </div>
+            <div className="guideList">
+              <div className="guideItem">
+                <strong>1</strong>
+                <span>将订阅地址导入 Clash Verge。</span>
+              </div>
+              <div className="guideItem">
+                <strong>2</strong>
+                <span>建议开启自动刷新，确保密码和节点配置保持最新。</span>
+              </div>
+              <div className="guideItem">
+                <strong>3</strong>
+                <span>若剩余流量异常下降，可联系管理员核对账号状态。</span>
+              </div>
+            </div>
+          </article>
+        </section>
       </section>
-
-      <div className="navRow">
-        <Link href="/login" className="textLink">
-          切换账号
-        </Link>
-        <Link href="/" className="textLink">
-          返回首页
-        </Link>
-      </div>
     </main>
   );
 }
