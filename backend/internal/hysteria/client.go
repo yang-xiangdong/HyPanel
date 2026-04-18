@@ -41,6 +41,26 @@ type onlineResponse struct {
 	Clients int `json:"clients"`
 }
 
+func (o *onlineResponse) UnmarshalJSON(data []byte) error {
+	// Hysteria API variants:
+	// 1) {"user1":{"clients":1}}
+	// 2) {"user1":1}
+	var number int
+	if err := json.Unmarshal(data, &number); err == nil {
+		o.Clients = number
+		return nil
+	}
+
+	type alias onlineResponse
+	var parsed alias
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		return err
+	}
+
+	o.Clients = parsed.Clients
+	return nil
+}
+
 func (c *Client) GetTrafficStats() ([]UserTraffic, error) {
 	if c.baseURL == "" || c.token == "" {
 		return []UserTraffic{}, nil
