@@ -14,7 +14,9 @@ type UserProfile = {
 };
 
 const apiBase =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/v1";
+  process.env.NEXT_PUBLIC_USER_API_BASE_URL ??
+  process.env.NEXT_PUBLIC_API_BASE_URL ??
+  "http://localhost:8080/api/v1";
 
 function formatGB(bytes: number) {
   return `${(bytes / 1024 / 1024 / 1024).toFixed(2)}`;

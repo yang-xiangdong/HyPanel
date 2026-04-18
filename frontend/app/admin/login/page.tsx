@@ -6,7 +6,9 @@ import { Shield } from "lucide-react";
 import { Logo } from "../../components/logo";
 
 const apiBase =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/v1";
+  process.env.NEXT_PUBLIC_ADMIN_API_BASE_URL ??
+  process.env.NEXT_PUBLIC_API_BASE_URL ??
+  "http://localhost:8080/api/v1";
 
 export default function AdminLoginPage() {
   const router = useRouter();
