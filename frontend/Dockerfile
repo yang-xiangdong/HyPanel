@@ -15,6 +15,7 @@ ARG NEXT_PUBLIC_ADMIN_API_BASE_URL
 ENV NEXT_PUBLIC_ADMIN_API_BASE_URL=${NEXT_PUBLIC_ADMIN_API_BASE_URL}
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+RUN mkdir -p /app/public
 RUN npm run build
 
 FROM node:22-alpine
