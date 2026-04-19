@@ -64,9 +64,15 @@ export default function MePage() {
     }
   }
 
-  const subscriptionUrl = profile?.subscriptionUrl
-    ? `${profile.subscriptionUrl}?client=${client}`
-    : "";
+  const subscriptionUrl = (() => {
+    if (!profile?.subscriptionUrl) return "";
+    try {
+      const path = new URL(profile.subscriptionUrl).pathname;
+      return `${window.location.origin}${path}?client=${client}`;
+    } catch {
+      return `${profile.subscriptionUrl}?client=${client}`;
+    }
+  })();
 
   async function copyUrl() {
     if (!subscriptionUrl) return;

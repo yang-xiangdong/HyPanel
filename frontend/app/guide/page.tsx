@@ -129,13 +129,8 @@ export default function GuidePage() {
                     <Icon size={18} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[11px] font-semibold text-[#a3a3a3]">
-                        步骤 {step.number}
-                      </span>
-                    </div>
                     <h3 className="text-sm font-semibold text-[#0a0a0a] mb-1.5">
-                      {step.title}
+                      步骤 {step.number}：{step.title}
                     </h3>
                     <p className="text-sm text-[#737373] leading-relaxed">
                       {step.description}
@@ -166,6 +161,34 @@ export default function GuidePage() {
           <div className="space-y-4">
             <div>
               <h3 className="text-sm font-medium text-[#0a0a0a]">
+                除了 Clash Mi 还支持哪些客户端？
+              </h3>
+              <p className="text-sm text-[#737373] mt-1 leading-relaxed">
+                支持所有兼容 mihomo 内核的客户端。在个人中心切换「Clash Verge」配置即可用于以下客户端：
+              </p>
+              <ul className="mt-2 space-y-1.5">
+                <li className="text-sm text-[#737373] flex items-baseline gap-2">
+                  <span className="w-1 h-1 rounded-full bg-[#a3a3a3] shrink-0 mt-1.5" />
+                  <span>
+                    <span className="font-medium text-[#525252]">
+                      Clash Verge Rev
+                    </span>
+                    {" — Windows / macOS / Linux"}
+                  </span>
+                </li>
+                <li className="text-sm text-[#737373] flex items-baseline gap-2">
+                  <span className="w-1 h-1 rounded-full bg-[#a3a3a3] shrink-0 mt-1.5" />
+                  <span>
+                    <span className="font-medium text-[#525252]">
+                      Clash Meta for Android
+                    </span>
+                    {" — Android"}
+                  </span>
+                </li>
+              </ul>
+            </div>
+            <div className="border-t border-[#f0f0f0] pt-4">
+              <h3 className="text-sm font-medium text-[#0a0a0a]">
                 订阅链接可以分享给别人吗？
               </h3>
               <p className="text-sm text-[#737373] mt-1">
@@ -177,7 +200,7 @@ export default function GuidePage() {
                 更换设备后需要重新配置吗？
               </h3>
               <p className="text-sm text-[#737373] mt-1">
-                只需在新设备上安装 Clash Mi 并导入同一个订阅链接即可，配置会自动同步。
+                只需在新设备上安装客户端并导入同一个订阅链接即可，配置会自动同步。
               </p>
             </div>
             <div className="border-t border-[#f0f0f0] pt-4">
