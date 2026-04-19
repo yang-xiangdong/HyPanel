@@ -87,3 +87,11 @@ docker compose --env-file .env -f deploy/docker-compose.yml down
 - `frontend`：Next.js
 - `deploy`：Compose 编排文件
 
+## 免责声明
+
+本项目仅供学习和研究网络技术之用。使用者应当遵守所在地区的法律法规，开发者不对任何人使用本项目所产生的后果承担责任。
+
+## Disclaimer
+
+This project is developed for educational and research purposes only. The developers do not endorse or encourage any illegal use of this software. Users are solely responsible for ensuring compliance with applicable laws and regulations in their jurisdiction. The developers assume no liability for any misuse of this project.
+
