@@ -21,7 +21,7 @@ func Open(dsn string) (*gorm.DB, error) {
 }
 
 func AutoMigrate(db *gorm.DB) error {
-	return db.AutoMigrate(&Admin{}, &VerificationCode{}, &User{}, &TrafficSnapshot{})
+	return db.AutoMigrate(&Admin{}, &VerificationCode{}, &User{})
 }
 
 func SeedAdmin(db *gorm.DB, cfg config.Config) error {
@@ -47,13 +47,16 @@ func SeedAdmin(db *gorm.DB, cfg config.Config) error {
 	return db.Create(&admin).Error
 }
 
-func NextUsername(db *gorm.DB) (string, error) {
-	var count int64
-	if err := db.Model(&User{}).Count(&count).Error; err != nil {
+func NextUsername(tx *gorm.DB) (string, error) {
+	var maxNum int64
+	err := tx.Model(&User{}).
+		Select("COALESCE(MAX(CAST(SUBSTRING(username FROM 'user(\\d+)') AS BIGINT)), 0)").
+		Row().Scan(&maxNum)
+	if err != nil {
 		return "", err
 	}
 
-	return fmt.Sprintf("user%d", count+1), nil
+	return fmt.Sprintf("user%d", maxNum+1), nil
 }
 
 func VerifyCode(db *gorm.DB, code, scope string) (*VerificationCode, error) {

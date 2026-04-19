@@ -44,27 +44,35 @@ export default function MePage() {
   }, [token]);
 
   async function loadProfile(currentToken: string) {
-    const response = await fetch(`${apiBase}/me`, {
-      headers: { Authorization: `Bearer ${currentToken}` },
-      cache: "no-store",
-    });
+    try {
+      const response = await fetch(`${apiBase}/me`, {
+        headers: { Authorization: `Bearer ${currentToken}` },
+        cache: "no-store",
+      });
 
-    if (!response.ok) {
-      setStatus("加载失败，请重新登录");
-      return;
+      if (!response.ok) {
+        setStatus("加载失败，请重新登录");
+        return;
+      }
+
+      const data = (await response.json()) as UserProfile;
+      setProfile(data);
+      setStatus("已同步");
+    } catch {
+      setStatus("网络错误，请检查连接");
     }
-
-    const data = (await response.json()) as UserProfile;
-    setProfile(data);
-    setStatus("已同步");
   }
 
   async function copyUrl() {
     if (!profile?.subscriptionUrl) return;
-    await navigator.clipboard.writeText(profile.subscriptionUrl);
-    setCopied(true);
-    setStatus("订阅地址已复制");
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(profile.subscriptionUrl);
+      setCopied(true);
+      setStatus("订阅地址已复制");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setStatus("复制失败，请手动复制");
+    }
   }
 
   function handleLogout() {

@@ -36,19 +36,10 @@ type User struct {
 	TotalTrafficGB    int64     `gorm:"not null;default:100"`
 	UsedTrafficBytes  int64     `gorm:"not null;default:0"`
 	Status            string    `gorm:"index;not null;default:'active'"`
+	TrafficResetAt    time.Time `gorm:"not null"`
 	RegisteredAt      time.Time `gorm:"not null"`
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
-}
-
-type TrafficSnapshot struct {
-	ID            uuid.UUID `gorm:"type:uuid;primaryKey"`
-	UserID        uuid.UUID `gorm:"type:uuid;index;not null"`
-	UploadBytes   int64     `gorm:"not null;default:0"`
-	DownloadBytes int64     `gorm:"not null;default:0"`
-	TotalBytes    int64     `gorm:"not null;default:0"`
-	RecordedAt    time.Time `gorm:"index;not null"`
-	CreatedAt     time.Time
 }
 
 func beforeCreateUUID(tx *gorm.DB) error {
@@ -65,10 +56,6 @@ func beforeCreateUUID(tx *gorm.DB) error {
 		if value.ID == uuid.Nil {
 			value.ID = uuid.New()
 		}
-	case *TrafficSnapshot:
-		if value.ID == uuid.Nil {
-			value.ID = uuid.New()
-		}
 	}
 
 	return nil
@@ -77,4 +64,3 @@ func beforeCreateUUID(tx *gorm.DB) error {
 func (a *Admin) BeforeCreate(tx *gorm.DB) error            { return beforeCreateUUID(tx) }
 func (v *VerificationCode) BeforeCreate(tx *gorm.DB) error { return beforeCreateUUID(tx) }
 func (u *User) BeforeCreate(tx *gorm.DB) error             { return beforeCreateUUID(tx) }
-func (t *TrafficSnapshot) BeforeCreate(tx *gorm.DB) error  { return beforeCreateUUID(tx) }

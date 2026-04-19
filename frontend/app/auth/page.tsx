@@ -54,6 +54,8 @@ export default function AuthPage() {
       window.localStorage.setItem("hypanel_user_token", data.token);
       window.localStorage.setItem("hypanel_user_name", username);
       router.push("/me");
+    } catch {
+      setStatus("网络错误，请检查连接。");
     } finally {
       setBusy(false);
     }
@@ -82,14 +84,20 @@ export default function AuthPage() {
       setPassword(data.password);
       setMode("login");
       setStatus("账号已生成，可直接登录。");
+    } catch {
+      setStatus("网络错误，请检查连接。");
     } finally {
       setBusy(false);
     }
   }
 
   async function copy(text: string, label: string) {
-    await navigator.clipboard.writeText(text);
-    setStatus(`${label}已复制`);
+    try {
+      await navigator.clipboard.writeText(text);
+      setStatus(`${label}已复制`);
+    } catch {
+      setStatus("复制失败，请手动复制");
+    }
   }
 
   const inputClass =

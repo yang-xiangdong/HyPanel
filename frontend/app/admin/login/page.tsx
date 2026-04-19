@@ -12,7 +12,7 @@ const apiBase =
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("admin@example.com");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
@@ -36,6 +36,8 @@ export default function AdminLoginPage() {
       const data = (await response.json()) as { token: string };
       window.localStorage.setItem("hypanel_admin_token", data.token);
       router.push("/admin/dashboard");
+    } catch {
+      setStatus("网络错误，请检查连接。");
     } finally {
       setBusy(false);
     }

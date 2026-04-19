@@ -15,7 +15,6 @@ type Config struct {
 	AdminBootstrapEmail  string
 	AdminBootstrapPass   string
 	HysteriaAPIBaseURL   string
-	HysteriaAPIPort      string
 	HysteriaAPIToken     string
 	SubscriptionBaseURL  string
 	HysteriaServer       string
@@ -37,13 +36,12 @@ func Load() Config {
 		JWTSecret:           envOrDefault("JWT_SECRET", "replace-me"),
 		AdminBootstrapEmail: envOrDefault("ADMIN_BOOTSTRAP_EMAIL", "admin@example.com"),
 		AdminBootstrapPass:  envOrDefault("ADMIN_BOOTSTRAP_PASSWORD", "ChangeThisNow123!"),
-		HysteriaAPIPort:     envOrDefault("HYSTERIA_API_PORT", "25413"),
 		HysteriaAPIBaseURL:  hysteriaAPIBaseURL(),
 		HysteriaAPIToken:    envOrDefault("HYSTERIA_API_TOKEN", ""),
 		SubscriptionBaseURL: envOrDefault("SUBSCRIPTION_BASE_URL", "http://localhost:8080/api/v1/subscriptions"),
-		HysteriaServer:      envOrDefault("HYSTERIA_SERVER", "yxd.dpdns.org"),
+		HysteriaServer:      envOrDefault("HYSTERIA_SERVER", "example.com"),
 		HysteriaPort:        envOrDefault("HYSTERIA_PORT", "443"),
-		HysteriaSNI:         envOrDefault("HYSTERIA_SNI", "yxd.dpdns.org"),
+		HysteriaSNI:         envOrDefault("HYSTERIA_SNI", "example.com"),
 		HysteriaALPN:        envOrDefault("HYSTERIA_ALPN", "h3"),
 		HysteriaObfs:        envOrDefault("HYSTERIA_OBFS", "salamander"),
 		HysteriaObfsPassword: envOrDefault("HYSTERIA_OBFS_PASSWORD", ""),

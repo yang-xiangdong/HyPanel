@@ -12,7 +12,6 @@ type TokenManager struct {
 
 type Claims struct {
 	Role string `json:"role"`
-	Sub  string `json:"sub"`
 	jwt.RegisteredClaims
 }
 
@@ -23,8 +22,8 @@ func NewTokenManager(secret string) *TokenManager {
 func (tm *TokenManager) Generate(subject, role string) (string, error) {
 	claims := Claims{
 		Role: role,
-		Sub:  subject,
 		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   subject,
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
@@ -48,4 +47,9 @@ func (tm *TokenManager) Parse(tokenString string) (*Claims, error) {
 	}
 
 	return claims, nil
+}
+
+// Sub returns the subject (user/admin ID) from the claims.
+func (c *Claims) Sub() string {
+	return c.RegisteredClaims.Subject
 }

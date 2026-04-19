@@ -1,3 +1,5 @@
+import { Zap } from "lucide-react";
+
 export function Logo({
   size = 40,
   dark = false,
@@ -12,18 +14,12 @@ export function Logo({
       }`}
       style={{ width: size, height: size }}
     >
-      <svg
-        viewBox="0 0 48 48"
-        fill="none"
-        stroke={dark ? "#ffffff" : "#ffffff"}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={3}
-        style={{ width: size * 0.55, height: size * 0.55 }}
-      >
-        <rect x="2" y="2" width="44" height="44" rx="12" />
-        <path d="M14 14h20l-12 20h12" />
-      </svg>
+      <Zap
+        size={size * 0.5}
+        className="text-white"
+        strokeWidth={2.5}
+        fill="currentColor"
+      />
     </div>
   );
 }

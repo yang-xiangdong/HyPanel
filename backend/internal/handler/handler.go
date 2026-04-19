@@ -61,12 +61,14 @@ func New(db *gorm.DB, tokenManager *auth.TokenManager, hysteriaClient *hysteria.
 }
 
 func (h *Handler) RegisterRoutes(router *gin.Engine) {
+	authLimiter := middleware.NewRateLimiter(10, time.Minute)
+
 	v1 := router.Group("/api/v1")
 	{
 		v1.GET("/health", h.health)
-		v1.POST("/admin/login", h.adminLogin)
-		v1.POST("/auth/register", h.registerUser)
-		v1.POST("/auth/login", h.userLogin)
+		v1.POST("/admin/login", authLimiter.Middleware(), h.adminLogin)
+		v1.POST("/auth/register", authLimiter.Middleware(), h.registerUser)
+		v1.POST("/auth/login", authLimiter.Middleware(), h.userLogin)
 		v1.POST("/hysteria/auth", h.hysteriaAuth)
 		v1.GET("/subscriptions/:token", h.subscription)
 	}
@@ -157,15 +159,11 @@ func (h *Handler) adminDashboard(c *gin.Context) {
 		return
 	}
 
-	trafficStats, err := h.hysteria.GetTrafficStats()
-	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("failed to load hysteria traffic stats: %v", err)})
-		return
-	}
-
-	trafficByUser := make(map[string]hysteria.UserTraffic, len(trafficStats))
+	// Still use Hysteria for online count (real-time data).
+	trafficStats, _ := h.hysteria.GetTrafficStats()
+	onlineByUser := make(map[string]int, len(trafficStats))
 	for _, item := range trafficStats {
-		trafficByUser[item.Username] = item
+		onlineByUser[item.Username] = item.OnlineCount
 	}
 
 	type dashboardUser struct {
@@ -179,14 +177,7 @@ func (h *Handler) adminDashboard(c *gin.Context) {
 
 	userRows := make([]dashboardUser, 0, len(users))
 	for _, user := range users {
-		usedTrafficBytes := int64(0)
-		onlineCount := 0
-		if item, ok := trafficByUser[user.Username]; ok {
-			usedTrafficBytes = item.TotalBytes
-			onlineCount = item.OnlineCount
-		}
-
-		remainingTrafficGB := user.TotalTrafficGB - bytesToGB(usedTrafficBytes)
+		remainingTrafficGB := user.TotalTrafficGB - bytesToGB(user.UsedTrafficBytes)
 		if remainingTrafficGB < 0 {
 			remainingTrafficGB = 0
 		}
@@ -195,15 +186,14 @@ func (h *Handler) adminDashboard(c *gin.Context) {
 			Username:           user.Username,
 			Status:             user.Status,
 			TotalTrafficGB:     user.TotalTrafficGB,
-			UsedTrafficBytes:   usedTrafficBytes,
+			UsedTrafficBytes:   user.UsedTrafficBytes,
 			RemainingTrafficGB: remainingTrafficGB,
-			OnlineCount:        onlineCount,
+			OnlineCount:        onlineByUser[user.Username],
 		})
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"users":   userRows,
-		"traffic": trafficStats,
+		"users": userRows,
 	})
 }
 
@@ -211,22 +201,6 @@ func (h *Handler) registerUser(c *gin.Context) {
 	var req registerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	code, err := store.VerifyCode(h.db, req.Code, "register")
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to verify code"})
-		return
-	}
-	if code == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid or expired code"})
-		return
-	}
-
-	username, err := store.NextUsername(h.db)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to assign username"})
 		return
 	}
 
@@ -242,17 +216,32 @@ func (h *Handler) registerUser(c *gin.Context) {
 		return
 	}
 
-	user := store.User{
-		Username:          username,
-		PasswordHash:      string(passwordHash),
-		ProxyAuthSecret:   passwordPlain,
-		SubscriptionToken: uuid.NewString(),
-		RegisteredAt:      time.Now(),
-		TotalTrafficGB:    100,
-	}
-
+	var user store.User
 	err = h.db.Transaction(func(tx *gorm.DB) error {
+		code, err := store.VerifyCode(tx, req.Code, "register")
+		if err != nil {
+			return err
+		}
+		if code == nil {
+			return fmt.Errorf("invalid or expired code")
+		}
+
+		username, err := store.NextUsername(tx)
+		if err != nil {
+			return err
+		}
+
 		now := time.Now()
+		user = store.User{
+			Username:          username,
+			PasswordHash:      string(passwordHash),
+			ProxyAuthSecret:   passwordPlain,
+			SubscriptionToken: uuid.NewString(),
+			RegisteredAt:      now,
+			TrafficResetAt:    time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location()),
+			TotalTrafficGB:    100,
+		}
+
 		if err := tx.Create(&user).Error; err != nil {
 			return err
 		}
@@ -262,7 +251,11 @@ func (h *Handler) registerUser(c *gin.Context) {
 		return tx.Save(code).Error
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create user"})
+		if err.Error() == "invalid or expired code" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create user"})
+		}
 		return
 	}
 
@@ -293,19 +286,13 @@ func (h *Handler) userLogin(c *gin.Context) {
 		return
 	}
 
-	usedTrafficBytes, err := h.lookupUserTraffic(user.Username)
-	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("failed to load user traffic: %v", err)})
-		return
-	}
-
 	token, err := h.tokenManager.Generate(user.ID.String(), "user")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to issue token"})
 		return
 	}
 
-	remainingTrafficGB := user.TotalTrafficGB - bytesToGB(usedTrafficBytes)
+	remainingTrafficGB := user.TotalTrafficGB - bytesToGB(user.UsedTrafficBytes)
 	if remainingTrafficGB < 0 {
 		remainingTrafficGB = 0
 	}
@@ -317,7 +304,7 @@ func (h *Handler) userLogin(c *gin.Context) {
 			"subscriptionUrl":    fmt.Sprintf("%s/%s", h.config.SubscriptionBaseURL, user.SubscriptionToken),
 			"totalTrafficGB":     user.TotalTrafficGB,
 			"remainingTrafficGB": remainingTrafficGB,
-			"usedTrafficBytes":   usedTrafficBytes,
+			"usedTrafficBytes":   user.UsedTrafficBytes,
 		},
 	})
 }
@@ -335,13 +322,7 @@ func (h *Handler) me(c *gin.Context) {
 		return
 	}
 
-	usedTrafficBytes, err := h.lookupUserTraffic(user.Username)
-	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("failed to load user traffic: %v", err)})
-		return
-	}
-
-	remainingTrafficGB := user.TotalTrafficGB - bytesToGB(usedTrafficBytes)
+	remainingTrafficGB := user.TotalTrafficGB - bytesToGB(user.UsedTrafficBytes)
 	if remainingTrafficGB < 0 {
 		remainingTrafficGB = 0
 	}
@@ -351,7 +332,7 @@ func (h *Handler) me(c *gin.Context) {
 		"subscriptionUrl":    fmt.Sprintf("%s/%s", h.config.SubscriptionBaseURL, user.SubscriptionToken),
 		"totalTrafficGB":     user.TotalTrafficGB,
 		"remainingTrafficGB": remainingTrafficGB,
-		"usedTrafficBytes":   usedTrafficBytes,
+		"usedTrafficBytes":   user.UsedTrafficBytes,
 	})
 }
 
@@ -398,8 +379,7 @@ func (h *Handler) hysteriaAuth(c *gin.Context) {
 		return
 	}
 
-	usedTrafficBytes, err := h.lookupUserTraffic(user.Username)
-	if err == nil && bytesToGB(usedTrafficBytes) >= user.TotalTrafficGB {
+	if bytesToGB(user.UsedTrafficBytes) >= user.TotalTrafficGB {
 		c.JSON(http.StatusOK, gin.H{"ok": false})
 		return
 	}
@@ -483,8 +463,7 @@ func (h *Handler) adminUpdateUser(c *gin.Context) {
 		return
 	}
 
-	usedTrafficBytes, _ := h.lookupUserTraffic(user.Username)
-	remainingTrafficGB := user.TotalTrafficGB - bytesToGB(usedTrafficBytes)
+	remainingTrafficGB := user.TotalTrafficGB - bytesToGB(user.UsedTrafficBytes)
 	if remainingTrafficGB < 0 {
 		remainingTrafficGB = 0
 	}
@@ -493,7 +472,7 @@ func (h *Handler) adminUpdateUser(c *gin.Context) {
 		"username":           user.Username,
 		"status":             user.Status,
 		"totalTrafficGB":     user.TotalTrafficGB,
-		"usedTrafficBytes":   usedTrafficBytes,
+		"usedTrafficBytes":   user.UsedTrafficBytes,
 		"remainingTrafficGB": remainingTrafficGB,
 	})
 }
@@ -527,21 +506,6 @@ func randomPassword(length int) (string, error) {
 
 func bytesToGB(bytes int64) int64 {
 	return bytes / 1024 / 1024 / 1024
-}
-
-func (h *Handler) lookupUserTraffic(username string) (int64, error) {
-	trafficStats, err := h.hysteria.GetTrafficStats()
-	if err != nil {
-		return 0, err
-	}
-
-	for _, item := range trafficStats {
-		if item.Username == username {
-			return item.TotalBytes, nil
-		}
-	}
-
-	return 0, nil
 }
 
 func (h *Handler) renderSubscription(user store.User) string {

@@ -33,7 +33,7 @@ func RequireRole(tokenManager *auth.TokenManager, expectedRole string) gin.Handl
 			return
 		}
 
-		c.Set("subject", claims.Sub)
+		c.Set("subject", claims.Sub())
 		c.Set("role", claims.Role)
 		c.Next()
 	}

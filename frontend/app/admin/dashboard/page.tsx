@@ -24,13 +24,6 @@ type DashboardResponse = {
     remainingTrafficGB: number;
     onlineCount: number;
   }>;
-  traffic: Array<{
-    username: string;
-    uploadBytes: number;
-    downloadBytes: number;
-    totalBytes: number;
-    onlineCount: number;
-  }>;
 };
 
 const apiBase =
@@ -80,61 +73,73 @@ export default function AdminDashboardPage() {
   }, [token]);
 
   async function loadDashboard(currentToken: string) {
-    const response = await fetch(`${apiBase}/admin/dashboard`, {
-      headers: { Authorization: `Bearer ${currentToken}` },
-      cache: "no-store",
-    });
+    try {
+      const response = await fetch(`${apiBase}/admin/dashboard`, {
+        headers: { Authorization: `Bearer ${currentToken}` },
+        cache: "no-store",
+      });
 
-    if (!response.ok) {
-      setStatus("加载失败，请重新登录");
-      return;
+      if (!response.ok) {
+        setStatus("加载失败，请重新登录");
+        return;
+      }
+
+      const data = (await response.json()) as DashboardResponse;
+      setDashboard(data);
+      setStatus("已就绪");
+    } catch {
+      setStatus("网络错误，请检查连接");
     }
-
-    const data = (await response.json()) as DashboardResponse;
-    setDashboard(data);
-    setStatus("已就绪");
   }
 
   async function handleGenerateCode() {
-    const response = await fetch(`${apiBase}/admin/codes`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ scope: "register" }),
-    });
+    try {
+      const response = await fetch(`${apiBase}/admin/codes`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ scope: "register" }),
+      });
 
-    if (!response.ok) {
-      setStatus("生成失败");
-      return;
+      if (!response.ok) {
+        setStatus("生成失败");
+        return;
+      }
+
+      const data = (await response.json()) as { code: string };
+      setCode(data.code);
+      setStatus("验证码已生成，有效期 1 小时");
+    } catch {
+      setStatus("网络错误，请检查连接");
     }
-
-    const data = (await response.json()) as { code: string };
-    setCode(data.code);
-    setStatus("验证码已生成，有效期 1 小时");
   }
 
   async function handleToggleStatus(
     username: string,
     nextStatus: "active" | "disabled",
   ) {
-    const response = await fetch(`${apiBase}/admin/users/${username}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ status: nextStatus }),
-    });
+    try {
+      const response = await fetch(`${apiBase}/admin/users/${username}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: nextStatus }),
+      });
 
-    if (!response.ok) {
-      setStatus("更新失败");
-      return;
+      if (!response.ok) {
+        setStatus("更新失败");
+        return;
+      }
+
+      setStatus(`${username} 已${nextStatus === "active" ? "启用" : "禁用"}`);
+      await loadDashboard(token);
+    } catch {
+      setStatus("网络错误，请检查连接");
     }
-
-    setStatus(`${username} 已${nextStatus === "active" ? "启用" : "禁用"}`);
-    await loadDashboard(token);
   }
 
   async function handleUpdateQuota(username: string) {
@@ -144,45 +149,53 @@ export default function AdminDashboardPage() {
       return;
     }
 
-    const response = await fetch(`${apiBase}/admin/users/${username}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ totalTrafficGB: quota }),
-    });
+    try {
+      const response = await fetch(`${apiBase}/admin/users/${username}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ totalTrafficGB: quota }),
+      });
 
-    if (!response.ok) {
-      setStatus("更新失败");
-      return;
+      if (!response.ok) {
+        setStatus("更新失败");
+        return;
+      }
+
+      setStatus(`${username} 额度已更新`);
+      await loadDashboard(token);
+    } catch {
+      setStatus("网络错误，请检查连接");
     }
-
-    setStatus(`${username} 额度已更新`);
-    await loadDashboard(token);
   }
 
   async function handleResetPassword(username: string) {
-    const response = await fetch(
-      `${apiBase}/admin/users/${username}/reset-password`,
-      {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      },
-    );
+    try {
+      const response = await fetch(
+        `${apiBase}/admin/users/${username}/reset-password`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
 
-    if (!response.ok) {
-      setStatus("重置失败");
-      return;
+      if (!response.ok) {
+        setStatus("重置失败");
+        return;
+      }
+
+      const data = (await response.json()) as {
+        username: string;
+        password: string;
+        subscriptionUrl: string;
+      };
+      setResetResult(data);
+      setStatus(`${username} 密码已重置`);
+    } catch {
+      setStatus("网络错误，请检查连接");
     }
-
-    const data = (await response.json()) as {
-      username: string;
-      password: string;
-      subscriptionUrl: string;
-    };
-    setResetResult(data);
-    setStatus(`${username} 密码已重置`);
   }
 
   function handleLogout() {
@@ -192,7 +205,7 @@ export default function AdminDashboardPage() {
 
   const totalUsers = dashboard?.users.length ?? 0;
   const totalUsed =
-    dashboard?.traffic.reduce((sum, item) => sum + item.totalBytes, 0) ?? 0;
+    dashboard?.users.reduce((sum, item) => sum + item.usedTrafficBytes, 0) ?? 0;
   const onlineUsers =
     dashboard?.users.reduce(
       (sum, item) => sum + (item.onlineCount > 0 ? 1 : 0),
@@ -526,33 +539,33 @@ export default function AdminDashboardPage() {
                   <thead>
                     <tr className="border-b border-[#e5e5e5]">
                       <th className={thClass}>用户名</th>
-                      <th className={thClass}>上传</th>
-                      <th className={thClass}>下载</th>
-                      <th className={thClass}>总量</th>
+                      <th className={thClass}>总额度</th>
+                      <th className={thClass}>已用</th>
+                      <th className={thClass}>剩余</th>
                       <th className={thClass}>在线设备</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#f0f0f0]">
-                    {dashboard?.traffic.length ? (
-                      dashboard.traffic.map((t) => (
+                    {dashboard?.users.length ? (
+                      dashboard.users.map((u) => (
                         <tr
-                          key={t.username}
+                          key={u.username}
                           className="hover:bg-[#fafafa] transition-colors"
                         >
                           <td className={`${tdClass} font-medium`}>
-                            {t.username}
+                            {u.username}
                           </td>
                           <td className={`${tdClass} text-[#525252]`}>
-                            {formatGB(t.uploadBytes)}
+                            {u.totalTrafficGB} GB
                           </td>
                           <td className={`${tdClass} text-[#525252]`}>
-                            {formatGB(t.downloadBytes)}
+                            {formatGB(u.usedTrafficBytes)}
                           </td>
                           <td className={`${tdClass} text-[#525252]`}>
-                            {formatGB(t.totalBytes)}
+                            {u.remainingTrafficGB} GB
                           </td>
                           <td className={`${tdClass} text-[#525252]`}>
-                            {t.onlineCount}
+                            {u.onlineCount}
                           </td>
                         </tr>
                       ))
@@ -614,10 +627,14 @@ export default function AdminDashboardPage() {
                 <span className="text-xs text-[#737373]">订阅地址</span>
                 <button
                   onClick={async () => {
-                    await navigator.clipboard.writeText(
-                      resetResult.subscriptionUrl,
-                    );
-                    setStatus("订阅地址已复制");
+                    try {
+                      await navigator.clipboard.writeText(
+                        resetResult.subscriptionUrl,
+                      );
+                      setStatus("订阅地址已复制");
+                    } catch {
+                      setStatus("复制失败，请手动复制");
+                    }
                   }}
                   className="text-xs text-[#737373] hover:text-[#0a0a0a] flex items-center gap-1 cursor-pointer"
                 >
