@@ -352,19 +352,9 @@ func (h *Handler) subscription(c *gin.Context) {
 		return
 	}
 
-	client := c.DefaultQuery("client", "clashmi")
-
-	var config string
-	switch client {
-	case "clashverge":
-		config = h.renderClashVerge(user)
-	default:
-		config = h.renderClashMi(user)
-	}
-
 	c.Header("Content-Type", "text/yaml; charset=utf-8")
 	c.Header("Content-Disposition", fmt.Sprintf("inline; filename=%s.yaml", user.Username))
-	c.String(http.StatusOK, config)
+	c.String(http.StatusOK, h.renderSubscription(user))
 }
 
 func (h *Handler) hysteriaAuth(c *gin.Context) {
@@ -565,7 +555,7 @@ func (h *Handler) buildProxySection(user store.User) (proxyName, proxyYAML strin
 	return proxyName, proxy
 }
 
-func (h *Handler) renderClashMi(user store.User) string {
+func (h *Handler) renderSubscription(user store.User) string {
 	proxyName, proxy := h.buildProxySection(user)
 
 	return fmt.Sprintf(`mixed-port: 7890
@@ -620,103 +610,6 @@ rules:
   - GEOSITE,cn,DIRECT
   - GEOIP,private,DIRECT,no-resolve
   - GEOIP,CN,DIRECT
-  - MATCH,PROXY
-`, proxy, proxyName)
-}
-
-func (h *Handler) renderClashVerge(user store.User) string {
-	proxyName, proxy := h.buildProxySection(user)
-
-	return fmt.Sprintf(`mixed-port: 7890
-allow-lan: true
-mode: rule
-log-level: info
-ipv6: false
-unified-delay: true
-tcp-concurrent: true
-find-process-mode: strict
-global-client-fingerprint: chrome
-
-profile:
-  store-selected: true
-  store-fake-ip: true
-
-external-controller: 127.0.0.1:9090
-
-dns:
-  enable: true
-  ipv6: false
-  enhanced-mode: fake-ip
-  fake-ip-range: 198.18.0.1/16
-  default-nameserver:
-    - 223.6.6.6
-    - 119.29.29.29
-  nameserver:
-    - https://dns.alidns.com/dns-query
-    - https://doh.pub/dns-query
-  fallback:
-    - https://dns.google/dns-query
-    - https://cloudflare-dns.com/dns-query
-  fallback-filter:
-    geoip: true
-    geoip-code: CN
-    ipcidr:
-      - 240.0.0.0/4
-      - 0.0.0.0/32
-
-proxies:
-%s
-
-proxy-groups:
-  - name: PROXY
-    type: select
-    proxies:
-      - %s
-      - DIRECT
-
-  - name: AdBlock
-    type: select
-    proxies:
-      - REJECT
-      - DIRECT
-      - PROXY
-
-  - name: Domestic
-    type: select
-    proxies:
-      - DIRECT
-      - PROXY
-
-rules:
-  - DOMAIN-SUFFIX,chatgpt.com,PROXY
-  - DOMAIN-SUFFIX,openai.com,PROXY
-  - DOMAIN-SUFFIX,oaistatic.com,PROXY
-  - DOMAIN-SUFFIX,oaiusercontent.com,PROXY
-  - DOMAIN-SUFFIX,google.com,PROXY
-  - DOMAIN-SUFFIX,googleapis.com,PROXY
-  - DOMAIN-SUFFIX,googlevideo.com,PROXY
-  - DOMAIN-SUFFIX,youtube.com,PROXY
-  - DOMAIN-SUFFIX,ytimg.com,PROXY
-  - DOMAIN-SUFFIX,telegram.org,PROXY
-  - DOMAIN-SUFFIX,t.me,PROXY
-  - DOMAIN-SUFFIX,github.com,PROXY
-  - DOMAIN-SUFFIX,githubusercontent.com,PROXY
-  - DOMAIN-SUFFIX,anthropic.com,PROXY
-  - DOMAIN-SUFFIX,claude.ai,PROXY
-  - DOMAIN-SUFFIX,cursor.sh,PROXY
-  - DOMAIN-SUFFIX,cursor.com,PROXY
-  - DOMAIN-SUFFIX,apple.com,Domestic
-  - DOMAIN-SUFFIX,icloud.com,Domestic
-  - DOMAIN-SUFFIX,microsoft.com,Domestic
-  - DOMAIN-SUFFIX,doubleclick.net,AdBlock
-  - DOMAIN-SUFFIX,googlesyndication.com,AdBlock
-  - DOMAIN-SUFFIX,googleadservices.com,AdBlock
-  - DOMAIN,localhost,DIRECT
-  - IP-CIDR,127.0.0.0/8,DIRECT
-  - IP-CIDR,10.0.0.0/8,DIRECT
-  - IP-CIDR,172.16.0.0/12,DIRECT
-  - IP-CIDR,192.168.0.0/16,DIRECT
-  - GEOIP,CN,Domestic
   - MATCH,PROXY
 `, proxy, proxyName)
 }

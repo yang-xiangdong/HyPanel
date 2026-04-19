@@ -161,12 +161,21 @@ export default function GuidePage() {
           <div className="space-y-4">
             <div>
               <h3 className="text-sm font-medium text-[#0a0a0a]">
-                除了 Clash Mi 还支持哪些客户端？
+                支持哪些客户端？
               </h3>
               <p className="text-sm text-[#737373] mt-1 leading-relaxed">
-                支持所有兼容 mihomo 内核的客户端。在个人中心切换「Clash Verge」配置即可用于以下客户端：
+                订阅链接返回的配置基于 mihomo 内核，所有兼容 mihomo 的 Clash 客户端均可直接使用同一个链接，包括但不限于：
               </p>
               <ul className="mt-2 space-y-1.5">
+                <li className="text-sm text-[#737373] flex items-baseline gap-2">
+                  <span className="w-1 h-1 rounded-full bg-[#a3a3a3] shrink-0 mt-1.5" />
+                  <span>
+                    <span className="font-medium text-[#525252]">
+                      Clash Mi
+                    </span>
+                    {" — Windows / macOS / Linux / iOS / Android"}
+                  </span>
+                </li>
                 <li className="text-sm text-[#737373] flex items-baseline gap-2">
                   <span className="w-1 h-1 rounded-full bg-[#a3a3a3] shrink-0 mt-1.5" />
                   <span>

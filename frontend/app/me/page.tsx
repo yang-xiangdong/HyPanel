@@ -28,7 +28,6 @@ export default function MePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [status, setStatus] = useState("正在同步数据...");
   const [copied, setCopied] = useState(false);
-  const [client, setClient] = useState<"clashmi" | "clashverge">("clashmi");
 
   useEffect(() => {
     const saved = window.localStorage.getItem("hypanel_user_token");
@@ -68,9 +67,9 @@ export default function MePage() {
     if (!profile?.subscriptionUrl) return "";
     try {
       const path = new URL(profile.subscriptionUrl).pathname;
-      return `${window.location.origin}${path}?client=${client}`;
+      return `${window.location.origin}${path}`;
     } catch {
-      return `${profile.subscriptionUrl}?client=${client}`;
+      return profile.subscriptionUrl;
     }
   })();
 
@@ -168,30 +167,6 @@ export default function MePage() {
             </button>
           </div>
 
-          {/* Client switcher */}
-          <div className="flex gap-1 p-1 bg-[#f5f5f5] rounded-lg mb-3">
-            <button
-              className={`flex-1 h-8 rounded-md text-xs font-medium transition-all cursor-pointer ${
-                client === "clashmi"
-                  ? "bg-white text-[#0a0a0a] shadow-sm"
-                  : "text-[#737373] hover:text-[#525252]"
-              }`}
-              onClick={() => setClient("clashmi")}
-            >
-              Clash Mi
-            </button>
-            <button
-              className={`flex-1 h-8 rounded-md text-xs font-medium transition-all cursor-pointer ${
-                client === "clashverge"
-                  ? "bg-white text-[#0a0a0a] shadow-sm"
-                  : "text-[#737373] hover:text-[#525252]"
-              }`}
-              onClick={() => setClient("clashverge")}
-            >
-              Clash Verge
-            </button>
-          </div>
-
           <div className="bg-[#fafafa] rounded-lg p-3 border border-[#f0f0f0]">
             <code className="text-xs text-[#737373] break-all leading-relaxed font-mono">
               {subscriptionUrl || "-"}
@@ -210,7 +185,7 @@ export default function MePage() {
                 1
               </span>
               <span className="text-sm text-[#525252] leading-relaxed">
-                选择你使用的客户端（Clash Mi 或 Clash Verge），复制对应的订阅链接。
+                复制上方的订阅链接，在客户端的订阅/配置页面粘贴并导入。
               </span>
             </li>
             <li className="flex items-start gap-3">
@@ -218,7 +193,7 @@ export default function MePage() {
                 2
               </span>
               <span className="text-sm text-[#525252] leading-relaxed">
-                在客户端的订阅/配置页面粘贴链接并导入。
+                支持所有 mihomo 内核客户端，开启系统代理即可使用。
               </span>
             </li>
             <li className="flex items-start gap-3">
