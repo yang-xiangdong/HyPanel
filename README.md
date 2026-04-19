@@ -1,50 +1,89 @@
 # HyPanel
 
-HyPanel is a self-hosted management panel for Hysteria users.
+简体中文 / [English](./README.en.md)
 
-## Stack
+HyPanel 是一个面向 Hysteria2 的轻量自托管管理面板，包含用户端与管理员端。
 
-- Go backend
-- Next.js frontend
-- PostgreSQL
-- Docker Compose
+## 功能概览
 
-## Features
+- 管理员登录、注册码生成、用户管理
+- 用户注册码注册与登录
+- 一键重置登录密码与代理密码
+- 订阅链接下发（Clash 配置）
+- 基于 Hysteria API 的流量与在线状态展示
 
-- Admin login with verification code
-- Verification-code based user registration
-- Auto-generated username and password
-- Subscription export for Clash Verge
-- Traffic usage dashboard backed by Hysteria API
+## UI 预览
 
-## Structure
+### 用户端
 
-- `backend`: Go API service
-- `frontend`: Next.js web app
-- `deploy`: Docker and bootstrap files
+![用户注册](./docs/image/ui_user_reg.png)
+![用户主页](./docs/image/ui_user_home.png)
 
-## Quick Start
+### 管理端
 
-1. Copy `.env.example` to `.env`
-2. Fill in Hysteria API and JWT settings
-3. Start the stack in the foreground with `docker compose --env-file .env -f deploy/docker-compose.yml up --build`
+![管理员登录](./docs/image/ui_admin_login.png)
+![管理员主页](./docs/image/ui_admin_home.png)
 
-For split-domain deployments, set:
-- `NEXT_PUBLIC_USER_API_BASE_URL` (e.g. `https://hy2.example.com/api/v1`)
-- `NEXT_PUBLIC_ADMIN_API_BASE_URL` (e.g. `https://hy2-admin.example.com/api/v1`)
+## 快速部署（Docker Compose）
 
-If these are empty, frontend falls back to `NEXT_PUBLIC_API_BASE_URL`.
+1. 准备配置
 
-The backend connects to the Hysteria API on the Docker host using `HYSTERIA_API_PORT`, so you only need to provide the host port exposed by your local Hysteria API.
-For Hysteria's HTTP auth mode, HyPanel expects the incoming `auth` field in `username:password` format and returns the matched user ID to Hysteria.
+```bash
+cp .env.example .env
+```
 
-## Common Commands
+2. 编辑 `.env`（最少修改这些）
 
-- Start in the background: `docker compose --env-file .env -f deploy/docker-compose.yml up -d --build`
-- Restart all services: `docker compose --env-file .env -f deploy/docker-compose.yml restart`
-- Rebuild and restart frontend only: `docker compose --env-file .env -f deploy/docker-compose.yml up -d --build frontend`
-- Rebuild and restart frontend + backend: `docker compose --env-file .env -f deploy/docker-compose.yml up -d --build frontend backend`
-- Stop services: `docker compose --env-file .env -f deploy/docker-compose.yml stop`
-- Stop and remove containers/network: `docker compose --env-file .env -f deploy/docker-compose.yml down`
-- View service status: `docker compose --env-file .env -f deploy/docker-compose.yml ps`
-- View logs: `docker compose --env-file .env -f deploy/docker-compose.yml logs -f`
+- `POSTGRES_PASSWORD`
+- `JWT_SECRET`
+- `ADMIN_BOOTSTRAP_EMAIL`
+- `ADMIN_BOOTSTRAP_PASSWORD`
+- `HYSTERIA_API_TOKEN`
+- `HYSTERIA_SERVER`
+- `HYSTERIA_SNI`
+- `HYSTERIA_OBFS_PASSWORD`
+- `SUBSCRIPTION_BASE_URL`（建议写完整 URL，例如 `https://your-domain.com/api/v1/subscriptions`）
+
+3. 启动服务
+
+```bash
+docker compose --env-file .env -f deploy/docker-compose.yml up -d --build
+```
+
+4. 访问
+
+- 前端：`http://<你的服务器IP>:3000`
+- 后端健康检查：`http://<你的服务器IP>:8080/api/v1/health`
+
+## 域名/反代说明（简版）
+
+- 单域名：
+  - `NEXT_PUBLIC_API_BASE_URL=/api/v1`
+- 用户端/管理端分域名：
+  - `NEXT_PUBLIC_USER_API_BASE_URL=https://user.example.com/api/v1`
+  - `NEXT_PUBLIC_ADMIN_API_BASE_URL=https://admin.example.com/api/v1`
+
+如未单独设置用户端/管理端变量，前端会回退到 `NEXT_PUBLIC_API_BASE_URL`。
+
+## 常用命令
+
+```bash
+# 查看状态
+docker compose --env-file .env -f deploy/docker-compose.yml ps
+
+# 查看日志
+docker compose --env-file .env -f deploy/docker-compose.yml logs -f
+
+# 重启
+docker compose --env-file .env -f deploy/docker-compose.yml restart
+
+# 停止并删除容器/网络
+docker compose --env-file .env -f deploy/docker-compose.yml down
+```
+
+## 开发目录
+
+- `backend`：Go API
+- `frontend`：Next.js
+- `deploy`：Compose 编排文件
+

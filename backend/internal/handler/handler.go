@@ -3,6 +3,7 @@ package handler
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -354,7 +355,12 @@ func (h *Handler) subscription(c *gin.Context) {
 
 	c.Header("Content-Type", "text/yaml; charset=utf-8")
 	c.Header("Content-Disposition", fmt.Sprintf("inline; filename=%s.yaml", user.Username))
-	c.String(http.StatusOK, h.renderSubscription(user))
+	subscriptionText, err := h.renderSubscription(user)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "failed to render subscription")
+		return
+	}
+	c.String(http.StatusOK, subscriptionText)
 }
 
 func (h *Handler) hysteriaAuth(c *gin.Context) {
@@ -522,49 +528,40 @@ func bytesToGB(bytes int64) int64 {
 	return bytes / 1024 / 1024 / 1024
 }
 
-func (h *Handler) buildProxySection(user store.User) (proxyName, proxyYAML string) {
-	proxyName = fmt.Sprintf("HyPanel-%s", user.Username)
-	password := fmt.Sprintf("%s:%s", user.Username, user.ProxyAuthSecret)
-
-	proxy := fmt.Sprintf(`  - name: %s
-    type: hysteria2
-    server: %s
-    port: %s
-    password: "%s"
-    sni: %s
-    skip-cert-verify: %s
-    udp: true`,
-		proxyName,
-		yamlString(h.config.HysteriaServer),
-		yamlString(h.config.HysteriaPort),
-		yamlString(password),
-		yamlString(h.config.HysteriaSNI),
-		strings.ToLower(h.config.HysteriaSkipCert))
-
-	if h.config.HysteriaALPN != "" {
-		proxy += fmt.Sprintf("\n    alpn:\n      - %s", yamlString(h.config.HysteriaALPN))
+func randomHexString(byteLen int) (string, error) {
+	if byteLen <= 0 {
+		return "", nil
 	}
-
-	if h.config.HysteriaObfs != "" {
-		proxy += fmt.Sprintf("\n    obfs: %s", yamlString(h.config.HysteriaObfs))
-		if h.config.HysteriaObfsPassword != "" {
-			proxy += fmt.Sprintf("\n    obfs-password: \"%s\"", yamlString(h.config.HysteriaObfsPassword))
-		}
+	buffer := make([]byte, byteLen)
+	if _, err := rand.Read(buffer); err != nil {
+		return "", err
 	}
-
-	return proxyName, proxy
+	return hex.EncodeToString(buffer), nil
 }
 
-func (h *Handler) renderSubscription(user store.User) string {
-	proxyName, proxy := h.buildProxySection(user)
+func (h *Handler) renderSubscription(user store.User) (string, error) {
+	secret, err := randomHexString(16)
+	if err != nil {
+		return "", err
+	}
+	password := fmt.Sprintf("%s:%s", user.Username, user.ProxyAuthSecret)
+	server := strings.ReplaceAll(h.config.HysteriaServer, "\n", "")
+	port := strings.ReplaceAll(h.config.HysteriaPort, "\n", "")
+	sni := strings.ReplaceAll(h.config.HysteriaSNI, "\n", "")
+	alpn := strings.ReplaceAll(h.config.HysteriaALPN, "\n", "")
+	obfs := strings.ReplaceAll(h.config.HysteriaObfs, "\n", "")
+	obfsPassword := strings.ReplaceAll(h.config.HysteriaObfsPassword, "\n", "")
+	skipCertVerify := strings.ToLower(strings.ReplaceAll(h.config.HysteriaSkipCert, "\n", ""))
 
 	return fmt.Sprintf(`mixed-port: 7890
+redir-port: 7892
 allow-lan: false
 mode: rule
-log-level: warning
+log-level: info
 ipv6: false
 unified-delay: true
 tcp-concurrent: true
+find-process-mode: strict
 global-client-fingerprint: chrome
 
 profile:
@@ -572,48 +569,126 @@ profile:
   store-fake-ip: true
 
 external-controller: 127.0.0.1:9090
+secret: "%s"
 
 dns:
   enable: true
   ipv6: false
+  use-hosts: true
   enhanced-mode: fake-ip
   fake-ip-range: 198.18.0.1/16
   default-nameserver:
     - 223.6.6.6
     - 119.29.29.29
+    - 180.76.76.76
   nameserver:
-    - https://dns.alidns.com/dns-query
-    - https://doh.pub/dns-query
+    - 223.6.6.6
+    - 119.29.29.29
+    - 180.76.76.76
   fallback:
-    - https://dns.google/dns-query
     - https://cloudflare-dns.com/dns-query
+    - https://dns.google/dns-query
+    - https://doh.pub/dns-query
   fallback-filter:
     geoip: true
-    geoip-code: CN
     ipcidr:
       - 240.0.0.0/4
       - 0.0.0.0/32
 
 proxies:
-%s
+  - name: YXD-Vultr-SG
+    type: hysteria2
+    server: %s
+    port: %s
+    password: "%s"
+    sni: %s
+    alpn:
+      - %s
+    obfs: %s
+    obfs-password: "%s"
+    skip-cert-verify: %s
+    udp: true
 
 proxy-groups:
   - name: PROXY
     type: select
     proxies:
-      - %s
+      - YXD-Vultr-SG
       - DIRECT
 
-rules:
-  - GEOSITE,category-ads-all,REJECT
-  - GEOSITE,geolocation-!cn,PROXY
-  - GEOSITE,cn,DIRECT
-  - GEOIP,private,DIRECT,no-resolve
-  - GEOIP,CN,DIRECT
-  - MATCH,PROXY
-`, proxy, proxyName)
-}
+  - name: AdBlock
+    type: select
+    proxies:
+      - REJECT
+      - DIRECT
+      - PROXY
 
-func yamlString(value string) string {
-	return strings.ReplaceAll(value, "\n", "")
+  - name: Domestic
+    type: select
+    proxies:
+      - DIRECT
+      - PROXY
+
+rules:
+  - DOMAIN-SUFFIX,chatgpt.com,PROXY
+  - DOMAIN-SUFFIX,openai.com,PROXY
+  - DOMAIN-SUFFIX,oaistatic.com,PROXY
+  - DOMAIN-SUFFIX,oaiusercontent.com,PROXY
+  - DOMAIN-SUFFIX,auth0.com,PROXY
+  - DOMAIN-SUFFIX,google.com,PROXY
+  - DOMAIN-SUFFIX,gstatic.com,PROXY
+  - DOMAIN-SUFFIX,googleapis.com,PROXY
+  - DOMAIN-SUFFIX,googlevideo.com,PROXY
+  - DOMAIN-SUFFIX,youtube.com,PROXY
+  - DOMAIN-SUFFIX,ytimg.com,PROXY
+  - DOMAIN-SUFFIX,telegram.org,PROXY
+  - DOMAIN-SUFFIX,t.me,PROXY
+  - DOMAIN-SUFFIX,github.com,PROXY
+  - DOMAIN-SUFFIX,githubusercontent.com,PROXY
+  - DOMAIN-SUFFIX,githubassets.com,PROXY
+  - DOMAIN-SUFFIX,anthropic.com,PROXY
+  - DOMAIN-SUFFIX,claude.ai,PROXY
+  - DOMAIN-SUFFIX,perplexity.ai,PROXY
+  - DOMAIN-SUFFIX,notion.so,PROXY
+  - DOMAIN-SUFFIX,notion.site,PROXY
+  - DOMAIN-SUFFIX,cursor.sh,PROXY
+  - DOMAIN-SUFFIX,cursor.com,PROXY
+  - DOMAIN-SUFFIX,apple.com,Domestic
+  - DOMAIN-SUFFIX,icloud.com,Domestic
+  - DOMAIN-SUFFIX,microsoft.com,Domestic
+  - DOMAIN-SUFFIX,live.com,Domestic
+  - DOMAIN-SUFFIX,office.com,Domestic
+  - DOMAIN-SUFFIX,windowsupdate.com,Domestic
+  - DOMAIN-SUFFIX,doubleclick.net,AdBlock
+  - DOMAIN-SUFFIX,googlesyndication.com,AdBlock
+  - DOMAIN-SUFFIX,googleadservices.com,AdBlock
+  - DOMAIN-SUFFIX,googletagmanager.com,AdBlock
+  - DOMAIN-SUFFIX,googletagservices.com,AdBlock
+  - DOMAIN-SUFFIX,adservice.google.com,AdBlock
+  - DOMAIN-SUFFIX,ads-twitter.com,AdBlock
+  - DOMAIN-SUFFIX,app-measurement.com,AdBlock
+  - DOMAIN-SUFFIX,ad.m.iqiyi.com,AdBlock
+  - DOMAIN-SUFFIX,cupid.iqiyi.com,AdBlock
+  - DOMAIN-SUFFIX,msg.iqiyi.com,AdBlock
+  - DOMAIN-SUFFIX,ad.api.3g.youku.com,AdBlock
+  - DOMAIN-SUFFIX,ad.mobile.youku.com,AdBlock
+  - DOMAIN-SUFFIX,hz.youku.com,AdBlock
+  - DOMAIN-SUFFIX,da.mgtv.com,AdBlock
+  - DOMAIN-SUFFIX,mobile.da.mgtv.com,AdBlock
+  - DOMAIN-SUFFIX,adnet.sohu.com,AdBlock
+  - DOMAIN-SUFFIX,aty.sohu.com,AdBlock
+  - DOMAIN-SUFFIX,afp.pplive.com,AdBlock
+  - DOMAIN-SUFFIX,stat.pptv.com,AdBlock
+  - DOMAIN-SUFFIX,gcdn.2mdn.net,AdBlock
+  - DOMAIN-SUFFIX,statcounter.com,AdBlock
+  - DOMAIN-SUFFIX,51.la,AdBlock
+  - DOMAIN,localhost,DIRECT
+  - IP-CIDR,127.0.0.0/8,DIRECT
+  - IP-CIDR,10.0.0.0/8,DIRECT
+  - IP-CIDR,172.16.0.0/12,DIRECT
+  - IP-CIDR,192.168.0.0/16,DIRECT
+  - IP-CIDR,100.64.0.0/10,DIRECT
+  - GEOIP,CN,Domestic
+  - MATCH,PROXY
+`, secret, server, port, password, sni, alpn, obfs, obfsPassword, skipCertVerify), nil
 }
