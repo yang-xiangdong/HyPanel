@@ -21,7 +21,31 @@ func Open(dsn string) (*gorm.DB, error) {
 }
 
 func AutoMigrate(db *gorm.DB) error {
-	return db.AutoMigrate(&Admin{}, &VerificationCode{}, &User{})
+	if err := db.AutoMigrate(&Admin{}, &VerificationCode{}); err != nil {
+		return err
+	}
+
+	// Backward-compatible migration for existing deployments:
+	// add traffic_reset_at as nullable, backfill, then enforce NOT NULL.
+	if db.Migrator().HasTable(&User{}) && !db.Migrator().HasColumn(&User{}, "traffic_reset_at") {
+		if err := db.Exec(`ALTER TABLE "users" ADD COLUMN "traffic_reset_at" timestamptz`).Error; err != nil {
+			return err
+		}
+
+		if err := db.Exec(`
+			UPDATE "users"
+			SET "traffic_reset_at" = date_trunc('month', COALESCE("registered_at", NOW()))
+			WHERE "traffic_reset_at" IS NULL
+		`).Error; err != nil {
+			return err
+		}
+
+		if err := db.Exec(`ALTER TABLE "users" ALTER COLUMN "traffic_reset_at" SET NOT NULL`).Error; err != nil {
+			return err
+		}
+	}
+
+	return db.AutoMigrate(&User{})
 }
 
 func SeedAdmin(db *gorm.DB, cfg config.Config) error {
