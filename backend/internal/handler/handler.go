@@ -204,13 +204,19 @@ func (h *Handler) registerUser(c *gin.Context) {
 		return
 	}
 
-	passwordPlain, err := randomPassword(12)
+	loginPassword, err := randomPassword(12)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate password"})
 		return
 	}
 
-	passwordHash, err := bcrypt.GenerateFromPassword([]byte(passwordPlain), bcrypt.DefaultCost)
+	proxyPassword, err := randomPassword(12)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate password"})
+		return
+	}
+
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(loginPassword), bcrypt.DefaultCost)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to secure password"})
 		return
@@ -235,7 +241,7 @@ func (h *Handler) registerUser(c *gin.Context) {
 		user = store.User{
 			Username:          username,
 			PasswordHash:      string(passwordHash),
-			ProxyAuthSecret:   passwordPlain,
+			ProxyAuthSecret:   proxyPassword,
 			SubscriptionToken: uuid.NewString(),
 			RegisteredAt:      now,
 			TrafficResetAt:    time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location()),
@@ -260,10 +266,11 @@ func (h *Handler) registerUser(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"username":          user.Username,
-		"password":          passwordPlain,
-		"subscriptionUrl":   fmt.Sprintf("%s/%s", h.config.SubscriptionBaseURL, user.SubscriptionToken),
-		"totalTrafficGB":    user.TotalTrafficGB,
+		"username":           user.Username,
+		"loginPassword":      loginPassword,
+		"proxyPassword":      proxyPassword,
+		"subscriptionUrl":    fmt.Sprintf("%s/%s", h.config.SubscriptionBaseURL, user.SubscriptionToken),
+		"totalTrafficGB":     user.TotalTrafficGB,
 		"remainingTrafficGB": user.TotalTrafficGB,
 	})
 }
@@ -345,9 +352,19 @@ func (h *Handler) subscription(c *gin.Context) {
 		return
 	}
 
+	client := c.DefaultQuery("client", "clashmi")
+
+	var config string
+	switch client {
+	case "clashverge":
+		config = h.renderClashVerge(user)
+	default:
+		config = h.renderClashMi(user)
+	}
+
 	c.Header("Content-Type", "text/yaml; charset=utf-8")
 	c.Header("Content-Disposition", fmt.Sprintf("inline; filename=%s.yaml", user.Username))
-	c.String(http.StatusOK, h.renderSubscription(user))
+	c.String(http.StatusOK, config)
 }
 
 func (h *Handler) hysteriaAuth(c *gin.Context) {
@@ -399,20 +416,26 @@ func (h *Handler) adminResetUserPassword(c *gin.Context) {
 		return
 	}
 
-	newPassword, err := randomPassword(12)
+	newLoginPassword, err := randomPassword(12)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate password"})
 		return
 	}
 
-	passwordHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	newProxyPassword, err := randomPassword(12)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate password"})
+		return
+	}
+
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(newLoginPassword), bcrypt.DefaultCost)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to secure password"})
 		return
 	}
 
 	user.PasswordHash = string(passwordHash)
-	user.ProxyAuthSecret = newPassword
+	user.ProxyAuthSecret = newProxyPassword
 	if err := h.db.Save(&user).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update password"})
 		return
@@ -420,7 +443,8 @@ func (h *Handler) adminResetUserPassword(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"username":        user.Username,
-		"password":        newPassword,
+		"loginPassword":   newLoginPassword,
+		"proxyPassword":   newProxyPassword,
 		"subscriptionUrl": fmt.Sprintf("%s/%s", h.config.SubscriptionBaseURL, user.SubscriptionToken),
 	})
 }
@@ -508,12 +532,102 @@ func bytesToGB(bytes int64) int64 {
 	return bytes / 1024 / 1024 / 1024
 }
 
-func (h *Handler) renderSubscription(user store.User) string {
-	proxyName := fmt.Sprintf("HyPanel-%s", user.Username)
+func (h *Handler) buildProxySection(user store.User) (proxyName, proxyYAML string) {
+	proxyName = fmt.Sprintf("HyPanel-%s", user.Username)
 	password := fmt.Sprintf("%s:%s", user.Username, user.ProxyAuthSecret)
 
+	proxy := fmt.Sprintf(`  - name: %s
+    type: hysteria2
+    server: %s
+    port: %s
+    password: "%s"
+    sni: %s
+    skip-cert-verify: %s
+    udp: true`,
+		proxyName,
+		yamlString(h.config.HysteriaServer),
+		yamlString(h.config.HysteriaPort),
+		yamlString(password),
+		yamlString(h.config.HysteriaSNI),
+		strings.ToLower(h.config.HysteriaSkipCert))
+
+	if h.config.HysteriaALPN != "" {
+		proxy += fmt.Sprintf("\n    alpn:\n      - %s", yamlString(h.config.HysteriaALPN))
+	}
+
+	if h.config.HysteriaObfs != "" {
+		proxy += fmt.Sprintf("\n    obfs: %s", yamlString(h.config.HysteriaObfs))
+		if h.config.HysteriaObfsPassword != "" {
+			proxy += fmt.Sprintf("\n    obfs-password: \"%s\"", yamlString(h.config.HysteriaObfsPassword))
+		}
+	}
+
+	return proxyName, proxy
+}
+
+func (h *Handler) renderClashMi(user store.User) string {
+	proxyName, proxy := h.buildProxySection(user)
+
 	return fmt.Sprintf(`mixed-port: 7890
-redir-port: 7892
+allow-lan: false
+mode: rule
+log-level: warning
+ipv6: false
+unified-delay: true
+tcp-concurrent: true
+global-client-fingerprint: chrome
+
+profile:
+  store-selected: true
+  store-fake-ip: true
+
+external-controller: 127.0.0.1:9090
+
+dns:
+  enable: true
+  ipv6: false
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  default-nameserver:
+    - 223.6.6.6
+    - 119.29.29.29
+  nameserver:
+    - https://dns.alidns.com/dns-query
+    - https://doh.pub/dns-query
+  fallback:
+    - https://dns.google/dns-query
+    - https://cloudflare-dns.com/dns-query
+  fallback-filter:
+    geoip: true
+    geoip-code: CN
+    ipcidr:
+      - 240.0.0.0/4
+      - 0.0.0.0/32
+
+proxies:
+%s
+
+proxy-groups:
+  - name: PROXY
+    type: select
+    proxies:
+      - %s
+      - DIRECT
+
+rules:
+  - GEOSITE,category-ads-all,REJECT
+  - GEOSITE,geolocation-!cn,PROXY
+  - GEOSITE,cn,DIRECT
+  - GEOIP,private,DIRECT,no-resolve
+  - GEOIP,CN,DIRECT
+  - MATCH,PROXY
+`, proxy, proxyName)
+}
+
+func (h *Handler) renderClashVerge(user store.User) string {
+	proxyName, proxy := h.buildProxySection(user)
+
+	return fmt.Sprintf(`mixed-port: 7890
 allow-lan: true
 mode: rule
 log-level: info
@@ -528,43 +642,30 @@ profile:
   store-fake-ip: true
 
 external-controller: 127.0.0.1:9090
-secret: "change-this-to-a-local-secret"
 
 dns:
   enable: true
   ipv6: false
-  use-hosts: true
   enhanced-mode: fake-ip
   fake-ip-range: 198.18.0.1/16
   default-nameserver:
     - 223.6.6.6
     - 119.29.29.29
   nameserver:
-    - 223.6.6.6
-    - 119.29.29.29
+    - https://dns.alidns.com/dns-query
+    - https://doh.pub/dns-query
   fallback:
-    - https://api.babyqq.net/xxoo
-    - https://cdn.babyqq.net/xxoo
-    - https://www.babyqqq.com/dns-query
+    - https://dns.google/dns-query
+    - https://cloudflare-dns.com/dns-query
   fallback-filter:
     geoip: true
+    geoip-code: CN
     ipcidr:
       - 240.0.0.0/4
       - 0.0.0.0/32
 
 proxies:
-  - name: %s
-    type: hysteria2
-    server: %s
-    port: %s
-    password: "%s"
-    sni: %s
-    alpn:
-      - %s
-    obfs: %s
-    obfs-password: "%s"
-    skip-cert-verify: %s
-    udp: true
+%s
 
 proxy-groups:
   - name: PROXY
@@ -591,9 +692,7 @@ rules:
   - DOMAIN-SUFFIX,openai.com,PROXY
   - DOMAIN-SUFFIX,oaistatic.com,PROXY
   - DOMAIN-SUFFIX,oaiusercontent.com,PROXY
-  - DOMAIN-SUFFIX,auth0.com,PROXY
   - DOMAIN-SUFFIX,google.com,PROXY
-  - DOMAIN-SUFFIX,gstatic.com,PROXY
   - DOMAIN-SUFFIX,googleapis.com,PROXY
   - DOMAIN-SUFFIX,googlevideo.com,PROXY
   - DOMAIN-SUFFIX,youtube.com,PROXY
@@ -602,61 +701,24 @@ rules:
   - DOMAIN-SUFFIX,t.me,PROXY
   - DOMAIN-SUFFIX,github.com,PROXY
   - DOMAIN-SUFFIX,githubusercontent.com,PROXY
-  - DOMAIN-SUFFIX,githubassets.com,PROXY
   - DOMAIN-SUFFIX,anthropic.com,PROXY
   - DOMAIN-SUFFIX,claude.ai,PROXY
-  - DOMAIN-SUFFIX,perplexity.ai,PROXY
-  - DOMAIN-SUFFIX,notion.so,PROXY
-  - DOMAIN-SUFFIX,notion.site,PROXY
   - DOMAIN-SUFFIX,cursor.sh,PROXY
   - DOMAIN-SUFFIX,cursor.com,PROXY
   - DOMAIN-SUFFIX,apple.com,Domestic
   - DOMAIN-SUFFIX,icloud.com,Domestic
   - DOMAIN-SUFFIX,microsoft.com,Domestic
-  - DOMAIN-SUFFIX,live.com,Domestic
-  - DOMAIN-SUFFIX,office.com,Domestic
-  - DOMAIN-SUFFIX,windowsupdate.com,Domestic
   - DOMAIN-SUFFIX,doubleclick.net,AdBlock
   - DOMAIN-SUFFIX,googlesyndication.com,AdBlock
   - DOMAIN-SUFFIX,googleadservices.com,AdBlock
-  - DOMAIN-SUFFIX,googletagmanager.com,AdBlock
-  - DOMAIN-SUFFIX,googletagservices.com,AdBlock
-  - DOMAIN-SUFFIX,adservice.google.com,AdBlock
-  - DOMAIN-SUFFIX,ads-twitter.com,AdBlock
-  - DOMAIN-SUFFIX,app-measurement.com,AdBlock
-  - DOMAIN-SUFFIX,ad.m.iqiyi.com,AdBlock
-  - DOMAIN-SUFFIX,cupid.iqiyi.com,AdBlock
-  - DOMAIN-SUFFIX,msg.iqiyi.com,AdBlock
-  - DOMAIN-SUFFIX,ad.api.3g.youku.com,AdBlock
-  - DOMAIN-SUFFIX,ad.mobile.youku.com,AdBlock
-  - DOMAIN-SUFFIX,hz.youku.com,AdBlock
-  - DOMAIN-SUFFIX,da.mgtv.com,AdBlock
-  - DOMAIN-SUFFIX,mobile.da.mgtv.com,AdBlock
-  - DOMAIN-SUFFIX,adnet.sohu.com,AdBlock
-  - DOMAIN-SUFFIX,aty.sohu.com,AdBlock
-  - DOMAIN-SUFFIX,afp.pplive.com,AdBlock
-  - DOMAIN-SUFFIX,stat.pptv.com,AdBlock
-  - DOMAIN-SUFFIX,gcdn.2mdn.net,AdBlock
-  - DOMAIN-SUFFIX,statcounter.com,AdBlock
-  - DOMAIN-SUFFIX,51.la,AdBlock
   - DOMAIN,localhost,DIRECT
   - IP-CIDR,127.0.0.0/8,DIRECT
   - IP-CIDR,10.0.0.0/8,DIRECT
   - IP-CIDR,172.16.0.0/12,DIRECT
   - IP-CIDR,192.168.0.0/16,DIRECT
-  - IP-CIDR,100.64.0.0/10,DIRECT
   - GEOIP,CN,Domestic
   - MATCH,PROXY
-`, proxyName,
-		yamlString(h.config.HysteriaServer),
-		yamlString(h.config.HysteriaPort),
-		yamlString(password),
-		yamlString(h.config.HysteriaSNI),
-		yamlString(h.config.HysteriaALPN),
-		yamlString(h.config.HysteriaObfs),
-		yamlString(h.config.HysteriaObfsPassword),
-		strings.ToLower(h.config.HysteriaSkipCert),
-		proxyName)
+`, proxy, proxyName)
 }
 
 func yamlString(value string) string {

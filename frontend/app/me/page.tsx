@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Copy, LogOut } from "lucide-react";
+import { Copy, LogOut, BookOpen } from "lucide-react";
 import { Logo } from "../components/logo";
 
 type UserProfile = {
@@ -28,6 +28,7 @@ export default function MePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [status, setStatus] = useState("正在同步数据...");
   const [copied, setCopied] = useState(false);
+  const [client, setClient] = useState<"clashmi" | "clashverge">("clashmi");
 
   useEffect(() => {
     const saved = window.localStorage.getItem("hypanel_user_token");
@@ -63,10 +64,14 @@ export default function MePage() {
     }
   }
 
+  const subscriptionUrl = profile?.subscriptionUrl
+    ? `${profile.subscriptionUrl}?client=${client}`
+    : "";
+
   async function copyUrl() {
-    if (!profile?.subscriptionUrl) return;
+    if (!subscriptionUrl) return;
     try {
-      await navigator.clipboard.writeText(profile.subscriptionUrl);
+      await navigator.clipboard.writeText(subscriptionUrl);
       setCopied(true);
       setStatus("订阅地址已复制");
       setTimeout(() => setCopied(false), 2000);
@@ -93,6 +98,13 @@ export default function MePage() {
             <span className="text-sm text-[#737373]">
               {profile?.username ?? ""}
             </span>
+            <button
+              onClick={() => router.push("/guide")}
+              className="h-8 px-3 text-xs font-medium border border-[#e5e5e5] rounded-md hover:bg-[#f5f5f5] transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              <BookOpen size={14} />
+              操作指南
+            </button>
             <button
               onClick={handleLogout}
               className="h-8 px-3 text-xs font-medium border border-[#e5e5e5] rounded-md hover:bg-[#f5f5f5] transition-colors flex items-center gap-1.5 cursor-pointer"
@@ -142,16 +154,41 @@ export default function MePage() {
             <h2 className="text-sm font-semibold text-[#0a0a0a]">订阅地址</h2>
             <button
               onClick={copyUrl}
-              disabled={!profile?.subscriptionUrl}
+              disabled={!subscriptionUrl}
               className="flex items-center gap-1.5 h-8 px-3 text-xs font-medium bg-[#0a0a0a] text-white rounded-md hover:bg-[#1a1a1a] disabled:opacity-50 transition-colors cursor-pointer"
             >
               <Copy size={14} />
               {copied ? "已复制" : "复制"}
             </button>
           </div>
+
+          {/* Client switcher */}
+          <div className="flex gap-1 p-1 bg-[#f5f5f5] rounded-lg mb-3">
+            <button
+              className={`flex-1 h-8 rounded-md text-xs font-medium transition-all cursor-pointer ${
+                client === "clashmi"
+                  ? "bg-white text-[#0a0a0a] shadow-sm"
+                  : "text-[#737373] hover:text-[#525252]"
+              }`}
+              onClick={() => setClient("clashmi")}
+            >
+              Clash Mi
+            </button>
+            <button
+              className={`flex-1 h-8 rounded-md text-xs font-medium transition-all cursor-pointer ${
+                client === "clashverge"
+                  ? "bg-white text-[#0a0a0a] shadow-sm"
+                  : "text-[#737373] hover:text-[#525252]"
+              }`}
+              onClick={() => setClient("clashverge")}
+            >
+              Clash Verge
+            </button>
+          </div>
+
           <div className="bg-[#fafafa] rounded-lg p-3 border border-[#f0f0f0]">
             <code className="text-xs text-[#737373] break-all leading-relaxed font-mono">
-              {profile?.subscriptionUrl ?? "-"}
+              {subscriptionUrl || "-"}
             </code>
           </div>
         </div>
@@ -167,7 +204,7 @@ export default function MePage() {
                 1
               </span>
               <span className="text-sm text-[#525252] leading-relaxed">
-                将订阅地址导入 Clash Verge。
+                选择你使用的客户端（Clash Mi 或 Clash Verge），复制对应的订阅链接。
               </span>
             </li>
             <li className="flex items-start gap-3">
@@ -175,7 +212,7 @@ export default function MePage() {
                 2
               </span>
               <span className="text-sm text-[#525252] leading-relaxed">
-                建议开启自动刷新，保持配置最新。
+                在客户端的订阅/配置页面粘贴链接并导入。
               </span>
             </li>
             <li className="flex items-start gap-3">
@@ -183,7 +220,14 @@ export default function MePage() {
                 3
               </span>
               <span className="text-sm text-[#525252] leading-relaxed">
-                若流量异常，请联系管理员核对。
+                详细步骤请查看
+                <button
+                  onClick={() => router.push("/guide")}
+                  className="text-[#0a0a0a] font-medium underline underline-offset-2 cursor-pointer ml-0.5"
+                >
+                  操作指南
+                </button>
+                。
               </span>
             </li>
           </ol>

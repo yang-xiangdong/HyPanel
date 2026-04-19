@@ -52,7 +52,8 @@ export default function AdminDashboardPage() {
   const [editingQuota, setEditingQuota] = useState<Record<string, string>>({});
   const [resetResult, setResetResult] = useState<{
     username: string;
-    password: string;
+    loginPassword: string;
+    proxyPassword: string;
     subscriptionUrl: string;
   } | null>(null);
   const [activeSection, setActiveSection] =
@@ -188,7 +189,8 @@ export default function AdminDashboardPage() {
 
       const data = (await response.json()) as {
         username: string;
-        password: string;
+        loginPassword: string;
+        proxyPassword: string;
         subscriptionUrl: string;
       };
       setResetResult(data);
@@ -615,11 +617,21 @@ export default function AdminDashboardPage() {
                 </p>
               </div>
               <div className="bg-[#fafafa] rounded-lg p-3 border border-[#f0f0f0]">
-                <span className="text-xs text-[#737373]">新密码</span>
+                <span className="text-xs text-[#737373]">登录密码</span>
                 <p className="text-sm font-semibold mt-0.5">
-                  {resetResult.password}
+                  {resetResult.loginPassword}
                 </p>
               </div>
+            </div>
+
+            <div className="bg-[#fafafa] rounded-lg p-3 border border-[#f0f0f0] mb-3">
+              <span className="text-xs text-[#737373]">代理密码</span>
+              <p className="text-sm font-semibold mt-0.5">
+                {resetResult.proxyPassword}
+              </p>
+              <p className="text-[11px] text-[#a3a3a3] mt-1">
+                用于 Hysteria 客户端认证
+              </p>
             </div>
 
             <div className="bg-[#fafafa] rounded-lg p-3 border border-[#f0f0f0] mb-4">

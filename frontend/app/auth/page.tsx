@@ -7,7 +7,8 @@ import { Logo } from "../components/logo";
 
 type RegisterResponse = {
   username: string;
-  password: string;
+  loginPassword: string;
+  proxyPassword: string;
   subscriptionUrl: string;
   totalTrafficGB: number;
   remainingTrafficGB: number;
@@ -81,7 +82,7 @@ export default function AuthPage() {
       const data = (await response.json()) as RegisterResponse;
       setResult(data);
       setUsername(data.username);
-      setPassword(data.password);
+      setPassword(data.loginPassword);
       setMode("login");
       setStatus("账号已生成，可直接登录。");
     } catch {
@@ -209,11 +210,20 @@ export default function AuthPage() {
                   </p>
                 </div>
                 <div className="bg-[#fafafa] rounded-lg p-3 border border-[#f0f0f0]">
-                  <span className="text-xs text-[#737373]">初始密码</span>
+                  <span className="text-xs text-[#737373]">登录密码</span>
                   <p className="text-sm font-semibold mt-0.5">
-                    {result.password}
+                    {result.loginPassword}
                   </p>
                 </div>
+              </div>
+              <div className="bg-[#fafafa] rounded-lg p-3 border border-[#f0f0f0] mb-3">
+                <span className="text-xs text-[#737373]">代理密码</span>
+                <p className="text-sm font-semibold mt-0.5">
+                  {result.proxyPassword}
+                </p>
+                <p className="text-[11px] text-[#a3a3a3] mt-1">
+                  用于 Hysteria 客户端认证，与登录密码不同
+                </p>
               </div>
               <div className="flex items-center gap-2 bg-[#fafafa] border border-[#f0f0f0] rounded-lg p-3">
                 <code className="flex-1 text-xs truncate text-[#737373] font-mono">
