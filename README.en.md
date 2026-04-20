@@ -17,11 +17,13 @@ HyPanel is a lightweight self-hosted management panel for Hysteria2, with both u
 ### User Side
 
 ![User Register](./docs/image/ui_user_reg.png)
+
 ![User Home](./docs/image/ui_user_home.png)
 
 ### Admin Side
 
 ![Admin Login](./docs/image/ui_admin_login.png)
+
 ![Admin Home](./docs/image/ui_admin_home.png)
 
 ## Quick Deploy (Docker Compose)
@@ -59,6 +61,7 @@ docker compose --env-file .env -f deploy/docker-compose.yml up -d --build
 
 - Single domain:
   - `NEXT_PUBLIC_API_BASE_URL=/api/v1`
+
 - Split user/admin domains:
   - `NEXT_PUBLIC_USER_API_BASE_URL=https://user.example.com/api/v1`
   - `NEXT_PUBLIC_ADMIN_API_BASE_URL=https://admin.example.com/api/v1`
