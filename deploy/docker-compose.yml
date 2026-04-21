@@ -15,7 +15,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
 
   backend:
     build:
@@ -31,7 +31,7 @@ services:
       postgres:
         condition: service_healthy
     ports:
-      - "${BACKEND_PORT:-8080}:${BACKEND_PORT:-8080}"
+      - "127.0.0.1:${BACKEND_PORT:-8080}:${BACKEND_PORT:-8080}"
 
   frontend:
     build:
@@ -48,7 +48,7 @@ services:
     depends_on:
       - backend
     ports:
-      - "${FRONTEND_PORT:-3000}:3000"
+      - "127.0.0.1:${FRONTEND_PORT:-3000}:3000"
 
 volumes:
   postgres_data:
