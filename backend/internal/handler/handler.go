@@ -630,14 +630,65 @@ proxy-groups:
       - PROXY
 
 rules:
+  - DOMAIN-SUFFIX,chatgpt.com,PROXY
+  - DOMAIN-SUFFIX,openai.com,PROXY
+  - DOMAIN-SUFFIX,oaistatic.com,PROXY
+  - DOMAIN-SUFFIX,oaiusercontent.com,PROXY
+  - DOMAIN-SUFFIX,auth0.com,PROXY
+  - DOMAIN-SUFFIX,google.com,PROXY
+  - DOMAIN-SUFFIX,gstatic.com,PROXY
+  - DOMAIN-SUFFIX,googleapis.com,PROXY
+  - DOMAIN-SUFFIX,googlevideo.com,PROXY
+  - DOMAIN-SUFFIX,youtube.com,PROXY
+  - DOMAIN-SUFFIX,ytimg.com,PROXY
+  - DOMAIN-SUFFIX,telegram.org,PROXY
+  - DOMAIN-SUFFIX,t.me,PROXY
+  - DOMAIN-SUFFIX,github.com,PROXY
+  - DOMAIN-SUFFIX,githubusercontent.com,PROXY
+  - DOMAIN-SUFFIX,githubassets.com,PROXY
+  - DOMAIN-SUFFIX,anthropic.com,PROXY
+  - DOMAIN-SUFFIX,claude.ai,PROXY
+  - DOMAIN-SUFFIX,perplexity.ai,PROXY
+  - DOMAIN-SUFFIX,notion.so,PROXY
+  - DOMAIN-SUFFIX,notion.site,PROXY
+  - DOMAIN-SUFFIX,cursor.sh,PROXY
+  - DOMAIN-SUFFIX,cursor.com,PROXY
+  - DOMAIN-SUFFIX,apple.com,Domestic
+  - DOMAIN-SUFFIX,icloud.com,Domestic
+  - DOMAIN-SUFFIX,microsoft.com,Domestic
+  - DOMAIN-SUFFIX,live.com,Domestic
+  - DOMAIN-SUFFIX,office.com,Domestic
+  - DOMAIN-SUFFIX,windowsupdate.com,Domestic
+  - DOMAIN-SUFFIX,doubleclick.net,AdBlock
+  - DOMAIN-SUFFIX,googlesyndication.com,AdBlock
+  - DOMAIN-SUFFIX,googleadservices.com,AdBlock
+  - DOMAIN-SUFFIX,googletagmanager.com,AdBlock
+  - DOMAIN-SUFFIX,googletagservices.com,AdBlock
+  - DOMAIN-SUFFIX,adservice.google.com,AdBlock
+  - DOMAIN-SUFFIX,ads-twitter.com,AdBlock
+  - DOMAIN-SUFFIX,app-measurement.com,AdBlock
+  - DOMAIN-SUFFIX,ad.m.iqiyi.com,AdBlock
+  - DOMAIN-SUFFIX,cupid.iqiyi.com,AdBlock
+  - DOMAIN-SUFFIX,msg.iqiyi.com,AdBlock
+  - DOMAIN-SUFFIX,ad.api.3g.youku.com,AdBlock
+  - DOMAIN-SUFFIX,ad.mobile.youku.com,AdBlock
+  - DOMAIN-SUFFIX,hz.youku.com,AdBlock
+  - DOMAIN-SUFFIX,da.mgtv.com,AdBlock
+  - DOMAIN-SUFFIX,mobile.da.mgtv.com,AdBlock
+  - DOMAIN-SUFFIX,adnet.sohu.com,AdBlock
+  - DOMAIN-SUFFIX,aty.sohu.com,AdBlock
+  - DOMAIN-SUFFIX,afp.pplive.com,AdBlock
+  - DOMAIN-SUFFIX,stat.pptv.com,AdBlock
+  - DOMAIN-SUFFIX,gcdn.2mdn.net,AdBlock
+  - DOMAIN-SUFFIX,statcounter.com,AdBlock
+  - DOMAIN-SUFFIX,51.la,AdBlock
+  - GEOSITE,category-ads-all,AdBlock
   - DOMAIN,localhost,DIRECT
   - IP-CIDR,127.0.0.0/8,DIRECT
   - IP-CIDR,10.0.0.0/8,DIRECT
   - IP-CIDR,172.16.0.0/12,DIRECT
   - IP-CIDR,192.168.0.0/16,DIRECT
   - IP-CIDR,100.64.0.0/10,DIRECT
-  - GEOSITE,category-ads-all,AdBlock
-  - GEOSITE,geolocation-!cn,PROXY
   - GEOSITE,CN,Domestic
   - GEOIP,CN,Domestic
   - MATCH,PROXY
